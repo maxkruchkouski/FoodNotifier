@@ -1,32 +1,15 @@
-<?php
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AnalyticsController;
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\OrderController;
+// Управление пользователями и ресторанами (SaaS)
+Route::post('/admin/users', [AdminController::class, 'createUser']);
+Route::post('/admin/restaurants', [AdminController::class, 'createRestaurant']);
+Route::post('/admin/restaurants/toggle', [AdminController::class, 'toggleTariff']);
+Route::delete('/admin/restaurants/{id}', [AdminController::class, 'deleteRestaurant']);
+Route::get('/admin/owners', [AdminController::class, 'getOwners']);
+Route::get('/admin/restaurants', [AdminController::class, 'getRestaurants']);
 
-Route::prefix('v1')->group(function () {
-    // Взаимодействие с админкой и аналитикой
-    Route::get('/dashboard', [DashboardController::class, 'index']);
-    Route::post('/restaurants', [DashboardController::class, 'storeRestaurant']);
-    Route::patch('/restaurants/{id}/toggle', [DashboardController::class, 'toggleActive']);
-    Route::delete('/restaurants/{id}', [DashboardController::class, 'destroyRestaurant']);
-    Route::post('/analytics/track', [DashboardController::class, 'track']);
-
-    // Доступ к кухонному оборудованию и заказам гостя с проверкой подписки
-    Route::middleware(['billing'])->group(function () {
-        Route::post('/orders', [OrderController::class, 'store']);
-        Route::get('/orders/{id}/status', [OrderController::class, 'checkStatus']);
-        Route::get('/kitchen/orders', [OrderController::class, 'getCookingOrders']);
-        Route::patch('/kitchen/orders/{id}/start', [OrderController::class, 'startCooking']);
-        Route::patch('/kitchen/orders/{id}/ready', [OrderController::class, 'markReady']);
-        Route::get('/board/orders', [OrderController::class, 'getBoardOrders']);
-    });
-});
-
-// ДОБАВЛЯЕМ СЮДА НАШ ТЕСТОВЫЙ РОУТ ДЛЯ ПРОВЕРКИ СВЯЗИ С ФРОНТЕНДОМ:
-Route::get('/test', function () {
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Laravel API на порту 8000 работает!'
-    ]);
-});
+// Аналитика, Метрики и KPI поваров
+Route::get('/admin/analytics/kpi', [AnalyticsController::class, 'getKpiMetrics']);
+Route::get('/admin/analytics/chart', [AnalyticsController::class, 'getChartData']);
+Route::get('/admin/qr', [AdminController::class, 'generateQr']);

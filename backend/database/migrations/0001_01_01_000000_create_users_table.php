@@ -13,13 +13,15 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
+            $table->string('name')->nullable(); // Сделаем nullable, так как старая админка имя не запрашивает
+            $table->string('email', 100)->unique();
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
+            $table->string('password_hash', 255); // Переименовали password -> password_hash для совместимости с монолитом
+            $table->string('role', 20)->default('owner'); // Добавили поле роли из монолита
             $table->rememberToken();
-            $table->timestamps();
+            $table->timestamps(); // Это создаст created_at и updated_at автоматически
         });
+
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();

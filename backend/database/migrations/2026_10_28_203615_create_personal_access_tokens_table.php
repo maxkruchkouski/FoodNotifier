@@ -8,15 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('users')) {
-            Schema::create('users', function (Blueprint $table) {
-                $table->id();
-                $table->string('email', 100)->unique();
-                $table->string('password');
-                $table->string('role', 20)->default('owner'); // 'superadmin', 'owner'
-                $table->timestamps();
-            });
-        }
+        // Блок Schema::create('users') удалён отсюда,
+        // так как пользователи создаются в самой первой миграции 000000_create_users_table.
 
         Schema::create('restaurants', function (Blueprint $table) {
             $table->id();
@@ -40,7 +33,7 @@ return new class extends Migration
         Schema::create('analytics', function (Blueprint $table) {
             $table->id();
             $table->string('restaurant_id', 50)->index();
-            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('created_at')->useCurrent(); // Сохраняем useCurrent для трекера визитов
         });
     }
 
@@ -49,6 +42,5 @@ return new class extends Migration
         Schema::dropIfExists('analytics');
         Schema::dropIfExists('orders');
         Schema::dropIfExists('restaurants');
-        Schema::dropIfExists('users');
     }
 };
