@@ -23,8 +23,17 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    // Указываем Laravel, какое поле использовать в качестве пароля для авторизации
+// Указываем Laravel, какое поле использовать в качестве пароля для авторизации
     public function getAuthPassword()
+    {
+        return $this->password_hash;
+    }
+
+    /**
+     * Магический геттер для совместимости с Laravel Sanctum и дефолтными Guard.
+     * Возвращает password_hash, когда ядро фреймворка запрашивает скрытое свойство ->password
+     */
+    public function getPasswordAttribute()
     {
         return $this->password_hash;
     }

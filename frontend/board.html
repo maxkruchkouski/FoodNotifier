@@ -46,8 +46,38 @@
 <script>
     const API_BASE_URL = '/api';
     const urlParams = new URLSearchParams(window.location.search);
-    const restaurantId = urlParams.get('restaurant') || 'default_cafe';
-    document.getElementById('board-title').innerText = `🍽️ Табло зала: ${restaurantId}`;
+    const restaurantId = urlParams.get('restaurant');
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const titleEl = document.getElementById('kitchen-title') || document.body;
+
+        if (!restaurantId) {
+            titleEl.innerHTML = `<span style="color:#ff5252;">⚠️ Ошибка: Ресторан не указан! Откройте экран через Панель Администратора.</span>`;
+            return; // Блокируем дальнейшее выполнение и интервалы
+        }
+
+        titleEl.innerText = `Кухня: ${restaurantId}`;
+        startKitchenPolling(); // Ваша старая функция автообновления заказов
+    });
+
+    // Внутри вашей функции, которая делает fetch-запрос (например, loadKitchenOrders):
+    function loadKitchenOrders() {
+        if (!restaurantId) return;
+
+        // Передаем правильный динамический restaurant_id в GET-запрос бэкенда
+        fetch(`/api/kitchen/orders?restaurant_id=${restaurantId}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Ошибка сервера');
+                return response.json();
+            })
+            .then(orders => {
+                renderKitchenOrders(orders); // Ваша старая функция отрисовки таблиц на кухне
+            })
+            .catch(err => {
+                console.error("Ошибка загрузки заказов кухни:", err);
+            });
+    }
+
 
     let previousReadyOrders = [];
     let isVoiceAllowed = false;

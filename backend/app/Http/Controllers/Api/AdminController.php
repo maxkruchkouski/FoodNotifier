@@ -1,42 +1,90 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
-use App\Models\User;
+use App\Http\Controllers\Controller;
 use App\Models\Restaurant;
+use App\Models\User;
 use App\Services\QrService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Mail;
 
 class AdminController extends Controller
 {
+    /**
+     * Авторизация администратора / владельца (Генерация токена Sanctum)
+     */
+    public function login(Request $request)
+
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        // 1. Ищем пользователя вручную по email
+        $user = User::where('email', $request->email)->first();
+
+        // 2. Сверяем пароль по вашему кастомному полю password_hash
+        if (!$user || !Hash::check($request->password, $user->password_hash)) {
+            return response()->json(['success' => false, 'message' => 'Неверные учетные данные'], 401);
+        }
+
+        // 3. Проверяем роль (Разрешаем доступ только admin и owner)
+        if (!in_array($user->role, ['superadmin', 'admin', 'owner'])) {
+            return response()->json(['success' => false, 'message' => 'Доступ запрещен'], 403);
+        }
+
+        // ИСКЛЮЧИЛИ ОПАСНЫЙ Auth::login($user), так как Sanctum авторизует напрямую через токены
+
+        // 4. Генерируем рабочий Sanctum токен
+        $token = $user->createToken('admin-access')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'email' => $user->email,
+                'role' => $user->role
+            ]
+        ]);
+    }
+
+
+
     /**
      * Создание нового клиента (SaaS Владельца франшизы)
      */
     public function createUser(Request $request)
     {
-        // В будущем здесь будет проверка: if ($request->user()->role !== 'superadmin')
+        // Защита: проверку роли теперь делает middleware или этот блок:
+        if (!in_array($request->user()->role, ['superadmin', 'admin'])) {
+            return response()->json(['success' => false, 'message' => 'Недостаточно прав!'], 403);
+        }
 
         $email = filter_var(trim($request->input('email')), FILTER_VALIDATE_EMAIL);
         if (!$email) {
             return response()->json(['success' => false, 'message' => 'Некорректный формат Email!'], 422);
         }
 
-        $rawPassword = Str::random(8); // Генерируем читаемый временный пароль вместо bin2hex
+        $rawPassword = Str::random(8);
 
         try {
             $user = User::create([
                 'email' => $email,
-                'password_hash' => Hash::make($rawPassword),
+                'password' => Hash::make($rawPassword), // Внимание: изменено с password_hash на password под Laravel Auth
                 'role' => 'owner'
             ]);
 
-            // Логика отправки письма из монолита
+            // Логика отправки письма
             $subject = "Доступ к FoodNotifier SaaS";
             $message = "Здравствуйте! Для вашей сети ресторанов создан аккаунт.\nЛогин: $email\nВременный пароль: $rawPassword";
-            @mail($email, $subject, $message, "From: no-reply@foodnotifier.ru");
+
+            // Временное решение на mail(). Для продакшна лучше использовать Mail::to()
+            mail($email, $subject, $message, "From: no-reply@foodnotifier.ru");
 
             return response()->json([
                 'success' => true,
@@ -80,7 +128,7 @@ class AdminController extends Controller
     public function toggleTariff(Request $request)
     {
         $id = (int)$request->input('id');
-        $restaurant = Restaurant::query()->findOrFail($id);
+        $restaurant = Restaurant::findOrFail($id);
         $restaurant->is_active = !$restaurant->is_active;
         $restaurant->save();
 
@@ -92,7 +140,7 @@ class AdminController extends Controller
      */
     public function deleteRestaurant($id)
     {
-        Restaurant::query()->where('id', $id)->delete();
+        Restaurant::where('id', $id)->delete();
         return response()->json(['success' => true]);
     }
 
@@ -101,23 +149,23 @@ class AdminController extends Controller
      */
     public function getOwners()
     {
-        $owners = User::query()->where('role', 'owner')->get(['id', 'email']);
+        $owners = User::where('role', 'owner')->get(['id', 'email']);
         return response()->json($owners);
     }
 
     /**
-     * Список подключенных ресторанов (с изоляцией данных)
+     * Список подключенных ресторанов с жесткой изоляцией данных через Sanctum
      */
     public function getRestaurants(Request $request)
     {
-        // Имитируем старую логику: если superadmin — отдаем всё, если owner — только его точки
-        $role = $request->header('X-User-Role', 'superadmin');
-        $userId = (int)$request->header('X-User-Id', 0);
+        // Данные берутся из токена авторизованного юзера
+        $user = $request->user();
 
-        if ($role === 'superadmin') {
-            $restaurants = Restaurant::query()->orderBy('id', 'desc')->get();
+        if (in_array($user->role, ['superadmin', 'admin'])) {
+            $restaurants = Restaurant::orderBy('id', 'desc')->get();
         } else {
-            $restaurants = Restaurant::query()->where('owner_id', $userId)->orderBy('id', 'desc')->get();
+            // Если зашел Owner — отдаем строго его рестораны
+            $restaurants = Restaurant::where('owner_id', $user->id)->orderBy('id', 'desc')->get();
         }
 
         return response()->json($restaurants);

@@ -1,12 +1,12 @@
 <?php
 
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\Restaurant;
 
 class OrderController extends Controller
 {
@@ -63,4 +63,29 @@ class OrderController extends Controller
             ->whereIn('status', ['cooking', 'ready'])->orderBy('status', 'desc')->orderBy('id', 'asc')->get();
         return response()->json($orders);
     }
-}
+
+
+    public function getActiveRestaurants()
+    {
+        try {
+            // Проверяем существование таблицы и активных записей
+            $restaurants = Restaurant::query()
+                ->where('is_active', true)
+                ->orderBy('name', 'asc')
+                ->get(['slug', 'name']);
+
+            return response()->json([
+                'success' => true,
+                'data' => $restaurants ?? []
+            ]);
+        } catch (\Exception $e) {
+            // Если таблицы нет или база пуста — не падаем, а отдаем пустой массив
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'debug_message' => 'База данных пуста или не инициализирована'
+            ]);
+        }
+    }}
+
+

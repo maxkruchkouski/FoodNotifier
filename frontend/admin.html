@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaaS Панель | FoodNotifier</title>
+    <style>
+        :root { --bg: #121212; --card: #1e1e1e; --accent: #ff9f1c; --text: #fff; --border: #2d2d2d; --success: #2ecc71; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box; }
+        .card { background: var(--card); border-radius: 16px; padding: 30px 24px; border: 1px solid var(--border); width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+        .wide-card { max-width: 800px; width: 100%; text-align: left; }
+        h2, h3 { margin: 0 0 20px 0; color: var(--accent); text-align: center; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 6px; font-size: 14px; color: #aaa; }
+        input, select { width: 100%; padding: 10px; background: #2a2a2a; border: 1px solid var(--border); border-radius: 8px; color: #fff; box-sizing: border-box; font-size: 14px; }
+        input:focus, select:focus { border-color: var(--accent); outline: none; }
+        button, .btn { width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 8px; color: #000; font-size: 15px; font-weight: bold; cursor: pointer; }
+        button:hover { opacity: 0.9; }
+        .hidden { display: none !important; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        th { color: var(--accent); text-transform: uppercase; font-size: 12px; }
+        .tab-btn { width: auto; padding: 10px 16px; background: #222; color: #aaa; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 5px; }
+        .tab-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: #1a1a1a; padding: 15px; border-radius: 10px; border: 1px solid var(--border); text-align: center; }
+        .stat-val { font-size: 22px; font-weight: bold; color: var(--accent); margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<!-- ОКНО ВХОДА -->
+<div class="card" id="loginBlock">
+    <h2>Вход в SaaS Панель</h2>
+    <form id="loginForm" onsubmit="return false;">
+        <div class="form-group"><label>Email</label><input type="email" id="email" required placeholder="admin@foodnotifier.ru"></div>
+        <div class="form-group"><label>Пароль</label><input type="password" id="password" required placeholder="••••••••"></div>
+        <button type="submit">Войти в панель</button>
+        <div class="err hidden" id="loginError" style="color:#ff5252; margin-top:10px; text-align:center;"></div>
+    </form>
+</div>
+
+<!-- ГЛАВНЫЙ ДАШБОРД -->
+<div class="card wide-card hidden" id="dashboardBlock">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:15px;">
+        <h2 style="margin:0;">Панель FoodNotifier</h2>
+        <button id="logoutBtn" style="width:auto; padding:6px 12px; background:#333; color:#fff; border:1px solid var(--border)">Выйти</button>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+        <button class="tab-btn active" onclick="switchTab('analytics')">📊 Метрики</button>
+        <button class="tab-btn" onclick="switchTab('restaurants')">🏢 Рестораны</button>
+        <button class="tab-btn" onclick="switchTab('users')">👥 Клиенты SaaS</button>
+    </div>
+
+    <div id="tab-analytics" class="tab-sec">
+        <div class="stat-grid">
+            <div class="stat-card"><div>Всего заказов</div><div class="stat-val" id="st-orders">0</div></div>
+            <div class="stat-card"><div>Активные точки</div><div class="stat-val" id="st-rests">0</div></div>
+            <div class="stat-card"><div>Ср. время готовки</div><div class="stat-val">4.5 мин</div></div>
+        </div>
+    </div>
+
+    <div id="tab-restaurants" class="tab-sec hidden">
+        <form id="restaurantForm" style="background:#1a1a1a; padding:15px; border-radius:10px; margin-bottom:20px; border:1px solid var(--border)">
+            <h3 style="margin:0 0 15px 0; text-align:left;">Добавить ресторан</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                <input type="text" id="rest_name" placeholder="Название (Додо)" required>
+                <input type="text" id="rest_slug" placeholder="Slug (dodo)" required>
+            </div>
+            <div class="form-group"><select id="rest_owner"><option value="">Выбор владельца...</option></select></div>
+            <button type="submit" style="width:auto; padding:10px 20px;">Создать точку</button>
+        </form>
+        <table>
+            <thead><tr><th>Название</th><th>Slug</th><th>Тариф</th><th>Экраны</th></tr></thead>
+            <tbody id="restsTable"></tbody>
+        </table>
+    </div>
+
+    <div id="tab-users" class="tab-sec hidden">
+        <form id="userForm" style="background:#1a1a1a; padding:15px; border-radius:10px; border:1px solid var(--border)">
+            <h3 style="margin:0 0 15px 0; text-align:left;">Создать аккаунт владельца франшизы</h3>
+            <div class="form-group"><input type="email" id="owner_email" placeholder="Email партнера" required></div>
+            <button type="submit" style="width:auto; padding:10px 20px;">Выдать доступ</button>
+            <div id="userRes" style="margin-top:10px; color:var(--success); font-weight:bold;"></div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Поднимаем вспомогательные функции на самый верх для безопасности
+    const id = (i) => document.getElementById(i);
+    const API = '/api';
+    const tkn = () => localStorage.getItem('fs_token');
+
+    // Навигация по вкладкам
+    function switchTab(name) {
+        document.querySelectorAll('.tab-sec').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(`tab-${name}`).classList.remove('hidden');
+        if (event && event.target) event.target.classList.add('active');
+    }
+
+    // Ожидание загрузки структуры страницы браузером перед биндингом событий
+    window.addEventListener('DOMContentLoaded', () => {
+
+        // Форма авторизации
+        id('loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const errBox = id('loginError');
+            errBox.classList.add('hidden');
+            try {
+                const res = await (await fetch(`${API}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ email: id('email').value, password: id('password').value })
+                })).json();
+                if (res.success) {
+                    localStorage.setItem('fs_token', res.token);
+                    loadDash();
+                } else {
+                    errBox.innerText = res.message || 'Ошибка';
+                    errBox.classList.remove('hidden');
+                }
+            } catch {
+                errBox.innerText = 'Ошибка сети';
+                errBox.classList.remove('hidden');
+            }
+        };
+
+        // Форма добавления ресторана
+        id('restaurantForm').onsubmit = async (e) => {
+            e.preventDefault();
+            try {
+                const res = await (await fetch(`${API}/admin/restaurants`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${tkn()}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: id('rest_name').value, slug: id('rest_slug').value, owner_id: id('rest_owner').value })
+                })).json();
+                if (res.success) { alert('Успешно!'); id('restaurantForm').reset(); loadRests(); }
+            } catch { alert('Ошибка'); }
+        };
+
+        // Форма создания пользователя франшизы
+        id('userForm').onsubmit = async (e) => {
+            e.preventDefault();
+            try {
+                const res = await (await fetch(`${API}/admin/users`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${tkn()}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: id('owner_email').value })
+                })).json();
+                if (res.success) { id('userRes').innerHTML = `Создан! Пароль: ${res.message.split(' ').pop()}`; loadOwners(); }
+            } catch { alert('Ошибка'); }
+        };
+
+        // Кнопка логаута
+        id('logoutBtn').onclick = () => { localStorage.clear(); window.location.reload(); };
+
+        // Автоматический вход при наличии сохраненного токена
+        if (tkn()) loadDash();
+    });
+
+    // Логика переключения экранов дашборда
+    function loadDash() {
+        id('loginBlock').classList.add('hidden');
+        id('dashboardBlock').classList.remove('hidden');
+        loadRests(); loadOwners();
+    }
+
+    // Динамическая загрузка списка ресторанов
+    async function loadRests() {
+        const tb = id('restsTable');
+        try {
+            const res = await (await fetch(`${API}/admin/restaurants`, { headers: { 'Authorization': `Bearer ${tkn()}` } })).json();
+            tb.innerHTML = '';
+            if (res.length) {
+                id('st-rests').innerText = res.length;
+                res.forEach(c => {
+                    tb.innerHTML += `<tr>
+                        <td><strong>${c.name}</strong></td>
+                        <td><code>${c.slug}</code></td>
+${c.is_active ? '🟢 Оплачен' : '🔴 Блок'}
+|
+`;
+                });
+            } else { tb.innerHTML = 'Нет точек'; }
+        } catch { tb.innerHTML = 'Ошибка сети'; }
+    }
+    // Динамическая загрузка выпадающего списка владельцев
+    async function loadOwners() {
+        const sel = id('rest_owner');
+        try {
+            // ИСПРАВЛЕНО: Добавлены обратные кавычки для шаблонной строки fetch
+            const res = await (await fetch(`${API}/admin/owners`, { headers: { 'Authorization': `Bearer ${tkn()}` } })).json();
+            sel.innerHTML = '<option value="">Выбор владельца...</option>';
+
+            // ИСПРАВЛЕНО: Тег option теперь строго обернут в косые кавычки (бекстики)
+            if (Array.isArray(res)) {
+                res.forEach(o => sel.innerHTML += `<option value="${o.id}">${o.email}</option>`);
+            }
+        } catch (e) {
+            console.error('Ошибка загрузки списка владельцев:', e);
+        }
+    }
+</script>
+</body>
+</html>
