@@ -49,43 +49,33 @@
     const restaurantId = urlParams.get('restaurant');
 
     document.addEventListener("DOMContentLoaded", () => {
-        const titleEl = document.getElementById('kitchen-title') || document.body;
+        const titleEl = document.getElementById('board-title');
 
         if (!restaurantId) {
-            titleEl.innerHTML = `<span style="color:#ff5252;">⚠️ Ошибка: Ресторан не указан! Откройте экран через Панель Администратора.</span>`;
-            return; // Блокируем дальнейшее выполнение и интервалы
+            if (titleEl) titleEl.innerHTML = `<span style="color:#ff5252;">⚠️ Ошибка: Ресторан не указан!</span>`;
+            return;
         }
 
-        titleEl.innerText = `Кухня: ${restaurantId}`;
-        startKitchenPolling(); // Ваша старая функция автообновления заказов
+        if (titleEl) titleEl.innerText = `Табло заказов: ${restaurantId.toUpperCase()}`;
+
+        // Сразу запускаем обновление табло при загрузке страницы
+        updateBoard();
+        // Устанавливаем интервал опроса бэкенда каждые 3 секунды
+        setInterval(updateBoard, 3000);
     });
-
-    // Внутри вашей функции, которая делает fetch-запрос (например, loadKitchenOrders):
-    function loadKitchenOrders() {
-        if (!restaurantId) return;
-
-        // Передаем правильный динамический restaurant_id в GET-запрос бэкенда
-        fetch(`/api/kitchen/orders?restaurant_id=${restaurantId}`)
-            .then(response => {
-                if (!response.ok) throw new Error('Ошибка сервера');
-                return response.json();
-            })
-            .then(orders => {
-                renderKitchenOrders(orders); // Ваша старая функция отрисовки таблиц на кухне
-            })
-            .catch(err => {
-                console.error("Ошибка загрузки заказов кухни:", err);
-            });
-    }
-
 
     let previousReadyOrders = [];
     let isVoiceAllowed = false;
 
-    setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('ru-RU'); }, 1000);
+    // Обновление часов в шапке
+    setInterval(() => {
+        const clockEl = document.getElementById('clock');
+        if (clockEl) clockEl.innerText = new Date().toLocaleTimeString('ru-RU');
+    }, 1000);
 
     document.getElementById('audio-prompt').addEventListener('click', function() {
-        this.classList.add('hidden'); isVoiceAllowed = true;
+        this.classList.add('hidden');
+        isVoiceAllowed = true;
         if ('speechSynthesis' in window) { window.speechSynthesis.speak(new SpeechSynthesisUtterance('')); }
     });
 
@@ -105,28 +95,47 @@
     }
 
     function updateBoard() {
+        if (!restaurantId) return;
+
         fetch(`${API_BASE_URL}/board/orders?restaurant_id=${restaurantId}`)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error('Ошибка сети');
+                return res.json();
+            })
             .then(orders => {
                 const cookingList = document.getElementById('cooking-list');
                 const readyList = document.getElementById('ready-list');
-                cookingList.innerHTML = ''; readyList.innerHTML = '';
+                if (!cookingList || !readyList) return;
+
+                cookingList.innerHTML = '';
+                readyList.innerHTML = '';
                 let currentReadyOrders = [];
 
-                orders.forEach(order => {
-                    const div = document.createElement('div');
-                    div.className = 'order-number'; div.innerText = order.order_number;
-                    if (order.status === 'cooking') cookingList.appendChild(div);
-                    else if (order.status === 'ready') { readyList.appendChild(div); currentReadyOrders.push(order.order_number); }
-                });
+                if (Array.isArray(orders)) {
+                    orders.forEach(order => {
+                        const div = document.createElement('div');
+                        div.className = 'order-number';
+                        div.innerText = order.order_number;
 
-                currentReadyOrders.forEach(num => { if (!previousReadyOrders.includes(num)) speakOrder(num); });
+                        // Сортируем заказы по двум колонкам табло
+                        if (order.status === 'cooking' || order.status === 'pending') {
+                            cookingList.appendChild(div);
+                        } else if (order.status === 'ready') {
+                            readyList.appendChild(div);
+                            currentReadyOrders.push(order.order_number);
+                        }
+                    });
+                }
+
+                // Голосовое оповещение для вновь прибывших готовых заказов
+                currentReadyOrders.forEach(num => {
+                    if (!previousReadyOrders.includes(num)) speakOrder(num);
+                });
                 previousReadyOrders = currentReadyOrders;
             })
             .catch(err => console.error("Ошибка обновления табло:", err));
     }
-    updateBoard();
-    setInterval(updateBoard, 3000);
+
     if ('speechSynthesis' in window) { window.speechSynthesis.onvoiceschanged = getRussianVoice; }
 </script>
 </body>
