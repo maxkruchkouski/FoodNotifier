@@ -12,8 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Здесь в будущем настроим middleware, если понадобится
+        $middleware->alias([
+            'resolve.tenant' => \App\Http\Middleware\ResolveTenant::class,
+            'check.billing' => \App\Http\Middleware\CheckRestaurantBilling::class,
+            'ensure.tenant.access' => \App\Http\Middleware\EnsureTenantAccess::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // Здесь настраивается обработка глобальных ошибок
+        //
     })->create();

@@ -3,189 +3,278 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Панель кухни | FoodNotifier SaaS</title>
+    <title>Кухня — FoodNotifier</title>
     <style>
-        :root { --bg-color: #141419; --card-bg: #1e1e24; --accent-color: #ff9f1c; --success-color: #2ecc71; --success-hover: #27ae60; --text-main: #ffffff; --text-muted: #7f8c8d; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; }
-        header { display: flex; justify-content: space-between; align-items: center; background-color: var(--card-bg); padding: 15px 25px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #2d2d35; }
-        header h1 { font-size: 20px; margin: 0; font-weight: 600; }
-        .status-badge { background-color: rgba(46, 204, 113, 0.1); color: var(--success-color); padding: 6px 14px; border-radius: 30px; font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
-        .status-dot { width: 8px; height: 8px; background-color: var(--success-color); border-radius: 50%; }
-        .grid-title { font-size: 18px; color: var(--text-muted); margin-bottom: 15px; }
+        :root {
+            --bg: #0f0f12;
+            --card: rgba(30, 30, 36, 0.85);
+            --accent: #ff9f1c;
+            --success: #2ecc71;
+            --text: #fff;
+            --muted: #8a8a93;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: radial-gradient(circle at 50% 0%, #1a1a24 0%, #0f0f12 60%);
+            color: var(--text);
+            margin: 0;
+            padding: 24px;
+            min-height: 100vh;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card);
+            backdrop-filter: blur(20px);
+            padding: 16px 24px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        header h1 { font-size: 20px; margin: 0; font-weight: 700; }
+        .badge-online {
+            background: rgba(46, 204, 113, 0.12);
+            color: var(--success);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; animation: blink 2s infinite; }
+        @keyframes blink { 50% { opacity: 0.4; } }
+        .grid-title { font-size: 16px; color: var(--muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
         .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .order-card { background-color: var(--card-bg); border: 1px solid #2d2d35; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; transition: border-color 0.2s; }
+        .order-card {
+            background: var(--card);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 24px;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+        .order-card:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3); }
+        .order-card.cooking {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent), 0 12px 30px rgba(255, 159, 28, 0.15);
+        }
         .order-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-        .order-num { font-size: 36px; font-weight: 800; color: var(--accent-color); margin: 0; }
-        .order-time { font-size: 13px; color: var(--text-muted); background: #282830; padding: 4px 8px; border-radius: 6px; }
-        .ready-btn { width: 100%; padding: 14px; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
-        .ready-btn:hover { opacity: 0.9; }
-        #no-orders { text-align: center; padding: 60px; background-color: var(--card-bg); border-radius: 16px; border: 1px dashed #3d3d45; color: var(--text-muted); font-style: italic; }
+        .order-num { font-size: 42px; font-weight: 800; color: var(--accent); margin: 0; line-height: 1; }
+        .order-time { font-size: 13px; color: var(--muted); background: rgba(255, 255, 255, 0.05); padding: 6px 12px; border-radius: 8px; font-weight: 600; }
+        .ready-btn {
+            width: 100%;
+            padding: 16px;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .ready-btn:hover { transform: translateY(-1px); }
+        .ready-btn.start { background: var(--accent); color: #000; }
+        .ready-btn.start:hover { box-shadow: 0 8px 20px rgba(255, 159, 28, 0.4); }
+        .ready-btn.done { background: var(--success); }
+        .ready-btn.done:hover { box-shadow: 0 8px 20px rgba(46, 204, 113, 0.4); }
+        #no-orders {
+            text-align: center;
+            padding: 80px 40px;
+            background: var(--card);
+            border-radius: 20px;
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            color: var(--muted);
+            font-style: italic;
+            font-size: 16px;
+        }
+        .audio-prompt {
+            position: fixed; inset: 0;
+            background: rgba(10, 10, 12, 0.95);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 9999;
+        }
+        .prompt-box {
+            background: #1e1e24;
+            padding: 40px 50px;
+            border-radius: 24px;
+            text-align: center;
+            border: 2px solid var(--accent);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+        }
+        .prompt-box h2 { color: var(--accent); margin: 0 0 12px 0; font-size: 26px; }
+        .prompt-box p { color: var(--muted); margin: 0 0 20px; font-size: 15px; }
+        .prompt-box button {
+            padding: 14px 32px;
+            font-size: 16px;
+            font-weight: 800;
+            color: #000;
+            background: var(--accent);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .error-title { color: #ff5252; padding: 20px; font-size: 16px; }
     </style>
 </head>
 <body>
-<div id="audio-prompt" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 12, 0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; cursor: pointer;">
-    <div style="background: #1e1e24; padding: 40px 50px; border-radius: 20px; text-align: center; border: 2px solid #ff9f1c; box-shadow: 0 15px 35px rgba(0,0,0,0.6);">
-        <h2 style="color:#ff9f1c; margin:0 0 12px 0; font-size:26px;">👨‍🍳 Звуковые уведомления кухни</h2>
-        <p style="color:#a0a0a0; margin:0; font-size: 15px;">Активация голосового оповещения для поваров.</p>
-        <button style="margin-top: 20px; padding: 12px 30px; font-size: 16px; font-weight: bold; color: #000; background-color: #ff9f1c; border: none; border-radius: 8px; cursor: pointer;">Запустить экран кухни</button>
+<div id="audio-prompt" class="audio-prompt">
+    <div class="prompt-box">
+        <h2>👨‍🍳 Звуковые уведомления кухни</h2>
+        <p>Активация голосового оповещения для поваров.</p>
+        <button>Запустить экран кухни</button>
     </div>
 </div>
 <header>
-    <h1 id="kitchen-title">👨‍🍳 Монитор кухни | FoodNotifier</h1>
-    <div class="status-badge"><span class="status-dot"></span> ОНЛАЙН API</div>
+    <h1 id="kitchen-title">Кухня</h1>
+    <div class="badge-online"><span class="dot"></span> Онлайн</div>
 </header>
-<div class="grid-title">Заказы в работе:</div>
+<div class="grid-title">Заказы в работе</div>
 <div class="orders-grid" id="orders-container"></div>
-<div id="no-orders" style="display: none;">На кухне тишина... Активных заказов нет.</div>
+<div id="no-orders" style="display:none;">На кухне тишина... Активных заказов нет.</div>
 
 <script>
-    const API_BASE_URL = '/api';
-    const urlParams = new URLSearchParams(window.location.search);
-    const restaurantId = urlParams.get('restaurant');
+    const API = '/api';
+    const restaurantSlug = new URLSearchParams(location.search).get('restaurant');
+    let previousPending = [];
+    let voiceAllowed = false;
+    let pollTimer = null;
 
-    // Глобальные переменные для корректного отслеживания аудио-контекста
-    let previousPendingOrders = [];
-    let isVoiceAllowed = false;
+    function apiFetch(path, options = {}) {
+        if (!restaurantSlug) {
+            return Promise.reject(new Error('Откройте страницу по QR-коду ресторана'));
+        }
+        const headers = {
+            'Accept': 'application/json',
+            'X-Restaurant-Id': restaurantSlug,
+            ...(options.headers || {}),
+        };
+        if (options.body && !headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json';
+        }
+        return fetch(path, { ...options, headers }).then(async (res) => {
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const err = new Error(data.message || data.error || `HTTP ${res.status}`);
+                err.status = res.status;
+                err.data = data;
+                throw err;
+            }
+            return data;
+        });
+    }
 
-    document.addEventListener("DOMContentLoaded", () => {
-        const titleEl = document.getElementById('kitchen-title') || document.body;
-
-        if (!restaurantId) {
-            titleEl.innerHTML = `<span style="color:#ff5252;">⚠️ Ошибка: Ресторан не указан! Откройте экран через Панель Администратора.</span>`;
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!restaurantSlug) {
+            document.getElementById('kitchen-title').innerHTML = '<span style="color:#ff5252;">⚠️ Ресторан не указан</span>';
             return;
         }
-
-        titleEl.innerText = `Кухня: ${restaurantId.toUpperCase()}`;
-
-        // Запуск поллинга бэкенда
-        loadKitchenOrders();
-        setInterval(loadKitchenOrders, 3000);
+        document.getElementById('kitchen-title').innerText = `Кухня: ${restaurantSlug}`;
+        loadOrders();
+        pollTimer = setInterval(loadOrders, 3000);
     });
 
-    // Снятие шторки аудио
     document.getElementById('audio-prompt').addEventListener('click', function() {
         this.style.display = 'none';
-        isVoiceAllowed = true;
-        if ('speechSynthesis' in window) { window.speechSynthesis.speak(new SpeechSynthesisUtterance('')); }
+        voiceAllowed = true;
+        if ('speechSynthesis' in window) window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
     });
 
-    // Голосовая нотификация нового заказа
-    function speakNewOrder(orderNumber) {
-        if (!isVoiceAllowed || !('speechSynthesis' in window)) return;
-        const utterance = new SpeechSynthesisUtterance(`Поступил новый заказ номер ${orderNumber}, нажмите кнопку В работу,когда начнете его готовить `);
-        utterance.lang = 'ru-RU';
-        utterance.rate = 0.9;
-        window.speechSynthesis.speak(utterance);
+    function speakNewOrder(num) {
+        if (!voiceAllowed || !('speechSynthesis' in window)) return;
+        const u = new SpeechSynthesisUtterance(`Поступил новый заказ номер ${num}`);
+        u.lang = 'ru-RU';
+        u.rate = 0.9;
+        window.speechSynthesis.speak(u);
     }
 
-    // Главная функция загрузки и обработки заказов
-    function loadKitchenOrders() {
-        if (!restaurantId) return;
-
-        fetch(`${API_BASE_URL}/kitchen/orders?restaurant_id=${restaurantId}`)
-            .then(response => {
-                if (!response.ok) throw new Error('Ошибка сервера');
-                return response.json();
-            })
-            .then(orders => {
-                renderKitchenOrders(orders);
-            })
-            .catch(err => {
-                console.error("Ошибка загрузки заказов кухни:", err);
-            });
+    async function loadOrders() {
+        try {
+            const orders = await apiFetch(`${API}/kitchen/orders`);
+            renderOrders(orders);
+        } catch (err) {
+            if (err.status === 403) {
+                document.getElementById('orders-container').innerHTML = '';
+                document.getElementById('no-orders').style.display = 'block';
+                document.getElementById('no-orders').innerHTML = '<span class="error-title">⚠️ Доступ заблокирован. Оплатите тариф.</span>';
+                clearInterval(pollTimer);
+            } else {
+                console.error('Ошибка загрузки заказов:', err);
+            }
+        }
     }
 
-    // Функция отрисовки интерфейса повара
-    function renderKitchenOrders(orders) {
+    function renderOrders(orders) {
         const container = document.getElementById('orders-container');
-        const noOrdersMsg = document.getElementById('no-orders');
-        if (!container || !noOrdersMsg) return;
-
+        const noOrders = document.getElementById('no-orders');
         container.innerHTML = '';
 
         if (!orders || orders.length === 0) {
-            noOrdersMsg.style.display = 'block';
-            previousPendingOrders = [];
+            noOrders.style.display = 'block';
+            previousPending = [];
             return;
         }
-        noOrdersMsg.style.display = 'none';
+        noOrders.style.display = 'none';
 
         orders.forEach(order => {
             const card = document.createElement('div');
-            card.className = 'order-card';
+            card.className = 'order-card' + (order.status === 'cooking' ? ' cooking' : '');
 
-            if (order.status === 'cooking') {
-                card.style.borderColor = 'var(--accent-color)';
-                card.style.background = '#22222b';
-            }
-
-            let actionButton = '';
-            if (order.status === 'pending') {
-                actionButton = `<button class="ready-btn" style="background-color: var(--accent-color); color: #000;" onclick="startCooking(${order.id})">В РАБОТУ 👨‍🍳</button>`;
-            } else {
-                actionButton = `<button class="ready-btn" style="background-color: var(--success-color);" onclick="markAsReady(${order.id})">ГОТОВ 🛎️</button>`;
-            }
+            const button = order.status === 'pending'
+                ? `<button class="ready-btn start" onclick="startCooking(${order.id})">В работу</button>`
+                : `<button class="ready-btn done" onclick="markReady(${order.id})">Готов</button>`;
 
             card.innerHTML = `
                 <div class="order-header">
                     <div>
-                        <span style="font-size: 14px; color: var(--text-muted); display:block; margin-bottom:4px;">Номер чека:</span>
+                        <span style="font-size: 12px; color: var(--muted); display:block; margin-bottom:6px; text-transform: uppercase; letter-spacing: 1px;">Номер чека</span>
                         <h2 class="order-num">${order.order_number}</h2>
                     </div>
                     <span class="order-time">${order.created_at}</span>
                 </div>
-                ${actionButton}
+                ${button}
             `;
             container.appendChild(card);
         });
 
-        // Блок аудио-оповещения повара о новых входящих заказах 'pending'
-        let currentPendingOrders = orders
-            .filter(o => o.status === 'pending')
-            .map(o => o.order_number);
-
-        currentPendingOrders.forEach(num => {
-            if (!previousPendingOrders.includes(num)) {
-                speakNewOrder(num);
-            }
+        const currentPending = orders.filter(o => o.status === 'pending').map(o => o.order_number);
+        currentPending.forEach(num => {
+            if (!previousPending.includes(num)) speakNewOrder(num);
         });
-        previousPendingOrders = currentPendingOrders;
+        previousPending = currentPending;
     }
 
-    // Логика кнопки "В РАБОТУ" (Передача FormData под ожидания Laravel)
-    function startCooking(orderId) {
-        const formData = new FormData();
-        formData.append('order_id', orderId);
-        formData.append('restaurant_id', restaurantId);
-
-        fetch(`${API_BASE_URL}/kitchen/orders/start`, {
-            method: 'POST',
-            body: formData
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) loadKitchenOrders();
-                else alert('Ошибка изменения статуса');
-            })
-            .catch(err => console.error(err));
+    async function startCooking(orderId) {
+        try {
+            await apiFetch(`${API}/kitchen/orders/start`, {
+                method: 'POST',
+                body: JSON.stringify({ order_id: orderId }),
+            });
+            loadOrders();
+        } catch (err) {
+            alert(err.message || 'Ошибка');
+        }
     }
 
-    // Логика кнопки "ГОТОВ" (Передача FormData под ожидания Laravel)
-    function markAsReady(orderId) {
-        const formData = new FormData();
-        formData.append('order_id', orderId);
-        formData.append('restaurant_id', restaurantId);
-
-        fetch(`${API_BASE_URL}/kitchen/orders/ready`, {
-            method: 'POST',
-            body: formData
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) loadKitchenOrders();
-                else alert('Ошибка закрытия заказа');
-            })
-            .catch(err => console.error(err));
+    async function markReady(orderId) {
+        try {
+            await apiFetch(`${API}/kitchen/orders/ready`, {
+                method: 'POST',
+                body: JSON.stringify({ order_id: orderId }),
+            });
+            loadOrders();
+        } catch (err) {
+            alert(err.message || 'Ошибка');
+        }
     }
 </script>
 </body>

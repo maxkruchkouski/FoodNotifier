@@ -3,131 +3,315 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FoodNotifier SaaS</title>
+    <title>Статус заказа</title>
     <style>
-        :root { --bg: #121212; --card: #1e1e1e; --accent: #ff9f1c; --text: #fff; --muted: #a0a0a0; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .card { background: var(--card); border-radius: 20px; padding: 30px 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; border: 1px solid #2d2d2d; width: 100%; max-width: 360px; }
-        .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 25px; text-transform: uppercase; letter-spacing: 1px; }
-        input { width: 100%; padding: 14px; font-size: 22px; font-weight: bold; text-align: center; background: #2a2a2a; border: 2px solid #3d3d3d; border-radius: 12px; color: #fff; box-sizing: border-box; margin-bottom: 20px; }
-        input:focus { border-color: var(--accent); outline: none; }
-        button, .btn { width: 100%; padding: 14px; font-size: 16px; font-weight: 600; color: #000; background: var(--accent); border: none; border-radius: 12px; cursor: pointer; transition: opacity 0.2s; box-sizing: border-box; }
-        button:hover, .btn:hover { opacity: 0.9; }
-        .hidden { display: none; }
-        .cafe-btn { background: #2a2a2a; color: #fff; border: 1px solid #3d3d3d; text-align: left; margin-bottom: 10px; padding: 14px; border-radius: 12px; width: 100%; cursor: pointer; font-size: 16px; }
-        .cafe-btn:hover { border-color: var(--accent); background: #333; }
-        .pulse { animation: p 1.8s infinite ease-in-out; color: var(--accent); font-size: 20px; font-weight: 600; }
-        @keyframes p { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        :root {
+            --bg: #0f0f12;
+            --card: rgba(30, 30, 36, 0.85);
+            --accent: #ff9f1c;
+            --text: #fff;
+            --muted: #a0a0a0;
+            --success: #2ecc71;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: radial-gradient(circle at 20% 20%, #1a1a24 0%, #0f0f12 60%);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .card {
+            background: var(--card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 36px 28px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        .brand {
+            font-size: 26px;
+            font-weight: 800;
+            margin: 0 0 6px 0;
+            background: linear-gradient(135deg, #fff 0%, #b0b0b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .subtitle {
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 28px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        h3 { font-size: 17px; font-weight: 600; margin: 0 0 18px 0; }
+        input {
+            width: 100%;
+            padding: 16px;
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            color: #fff;
+            box-sizing: border-box;
+            margin-bottom: 16px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 159, 28, 0.15);
+        }
+        button, .btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #000;
+            background: var(--accent);
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            box-sizing: border-box;
+        }
+        button:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(255, 159, 28, 0.3); }
+        button:active { transform: translateY(0); }
+        .hidden { display: none !important; }
+        .cafe-btn {
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: left;
+            margin-bottom: 10px;
+            padding: 16px 18px;
+            border-radius: 14px;
+            width: 100%;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .cafe-btn:hover { border-color: var(--accent); background: rgba(255, 159, 28, 0.08); }
+        .pulse {
+            animation: pulse 1.8s infinite ease-in-out;
+            color: var(--accent);
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .status-ready { color: var(--success) !important; animation: none !important; }
+        @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .badge-num {
+            background: rgba(255, 255, 255, 0.06);
+            padding: 8px 18px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 24px;
+            font-size: 13px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .badge-num span { color: var(--accent); font-weight: 700; }
+        .ghost-btn {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 10px;
+        }
+        .ghost-btn:hover { border-color: var(--muted); box-shadow: none; }
+        .error { color: #ff5252; padding: 20px; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h1 style="font-size: 26px; margin: 0 0 5px 0;">FoodNotifier</h1>
+    <h1 class="brand" id="brand-title">Загрузка...</h1>
     <div class="subtitle" id="brand-subtitle">Загрузка...</div>
 
-    <!-- Скрин 1: Выбор ресторана -->
     <div id="select-screen" class="hidden">
-        <h3 style="margin-bottom: 15px;">Выберите заведение:</h3>
-        <div id="restaurants-list"><div style="color: var(--muted);">Загрузка списка...</div></div>
+        <h3>Выберите заведение:</h3>
+        <div id="restaurants-list"></div>
     </div>
 
-    <!-- Скрин 2: Ввод заказа -->
     <div id="form-screen" class="hidden">
-        <h3 style="margin-bottom: 15px;">Введите номер заказа с чека:</h3>
-        <input type="number" id="order_number" placeholder="00" min="1" inputmode="numeric">
+        <h3>Введите номер заказа с чека:</h3>
+        <input type="number" id="order_number" placeholder="00" min="1" inputmode="numeric" autocomplete="off">
         <button id="start-btn">Следить за готовностью</button>
     </div>
 
-    <!-- Скрин 3: Статус готовности -->
     <div id="status-screen" class="hidden">
-        <div style="background: #2a2a2a; padding: 6px 16px; border-radius: 20px; display: inline-block; margin-bottom: 20px; font-size: 14px; color: var(--muted);">ЗАКАЗ № <span id="display-num" style="color: var(--accent); font-weight: bold;">0</span></div>
+        <div class="badge-num">ЗАКАЗ № <span id="display-num">0</span></div>
         <div style="margin: 30px 0;" id="status-text" class="pulse">⏳ Готовится...</div>
-        <button id="reset-btn" style="background:transparent; color:var(--muted); border:1px solid #3d3d3d;">Другой заказ</button>
+        <button id="reset-btn" class="ghost-btn">Другой заказ</button>
+    </div>
+
+    <div id="error-screen" class="hidden">
+        <div class="error" id="error-text"></div>
     </div>
 </div>
 
 <script>
     const API = '/api';
-    const rId = new URLSearchParams(window.location.search).get('restaurant');
-    let currentId = null, interval = null;
+    const restaurantSlug = new URLSearchParams(location.search).get('restaurant');
+    let currentOrderId = null, pollTimer = null;
 
-    document.addEventListener("DOMContentLoaded", async () => {
-        if (!rId) {
-            document.getElementById('brand-subtitle').innerText = "Мульти-SaaS платформа";
-            document.getElementById('select-screen').classList.remove('hidden');
-            return loadCafes();
+    // Универсальная обёртка — всегда передаёт X-Restaurant-Id
+    function apiFetch(path, options = {}) {
+        if (!restaurantSlug) {
+            return Promise.reject(new Error('Откройте страницу по QR-коду ресторана'));
+        }
+        const headers = {
+            'Accept': 'application/json',
+            'X-Restaurant-Id': restaurantSlug,
+            ...(options.headers || {}),
+        };
+        if (options.body && !headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json';
+        }
+        return fetch(path, { ...options, headers }).then(async (res) => {
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const err = new Error(data.message || data.error || `HTTP ${res.status}`);
+                err.status = res.status;
+                err.data = data;
+                throw err;
+            }
+            return data;
+        });
+    }
+
+    function showScreen(id) {
+        ['select-screen', 'form-screen', 'status-screen', 'error-screen'].forEach(s => {
+            document.getElementById(s).classList.add('hidden');
+        });
+        document.getElementById(id).classList.remove('hidden');
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Сценарий 1: без ?restaurant — показываем выбор ресторана
+        if (!restaurantSlug) {
+            document.getElementById('brand-title').innerText = 'FoodNotifier';
+            document.getElementById('brand-subtitle').innerText = 'Выберите заведение';
+            showScreen('select-screen');
+            return loadRestaurants();
         }
 
-        document.getElementById('brand-subtitle').innerText = `Заведение: ${rId}`;
-        document.getElementById('form-screen').classList.remove('hidden');
+        // Сценарий 2: с ?restaurant — показываем форму ввода заказа
+        document.getElementById('brand-title').innerText = restaurantSlug;
+        document.getElementById('brand-subtitle').innerText = 'Статус заказа';
+        showScreen('form-screen');
 
-        const sId = localStorage.getItem(`id_${rId}`), sNum = localStorage.getItem(`num_${rId}`);
-        if (sId && sNum) { currentId = sId; showStatus(sNum); startCheck(); }
+        // Восстанавливаем сохранённый заказ (если гость уже вводил)
+        const savedId = localStorage.getItem(`order_id_${restaurantSlug}`);
+        const savedNum = localStorage.getItem(`order_num_${restaurantSlug}`);
+        if (savedId && savedNum) {
+            currentOrderId = savedId;
+            showStatus(savedNum);
+            startPolling();
+        }
     });
 
-    async function loadCafes() {
+    async function loadRestaurants() {
         const list = document.getElementById('restaurants-list');
         try {
-            const res = await (await fetch(`${API}/restaurants/list`)).json();
+            const res = await fetch(`${API}/restaurants/list`, { headers: { 'Accept': 'application/json' } });
+            const json = await res.json();
             list.innerHTML = '';
-            if (res.success && res.data.length > 0) {
-                res.data.forEach(c => {
+            if (json.success && json.data.length > 0) {
+                json.data.forEach(c => {
                     const b = document.createElement('button');
                     b.className = 'cafe-btn';
                     b.innerText = c.name;
                     b.onclick = () => window.location.search = `?restaurant=${c.slug}`;
                     list.appendChild(b);
                 });
-            } else { list.innerHTML = 'Нет активных заведений'; }
-        } catch { list.innerHTML = 'Ошибка соединения'; }
+            } else {
+                list.innerHTML = '<div style="color: var(--muted); padding: 10px;">Нет активных заведений</div>';
+            }
+        } catch {
+            list.innerHTML = '<div style="color: #ff5252; padding: 10px;">Ошибка соединения</div>';
+        }
     }
 
     function showStatus(num) {
-        document.getElementById('form-screen').classList.add('hidden');
-        document.getElementById('status-screen').classList.remove('hidden');
         document.getElementById('display-num').innerText = num;
+        showScreen('status-screen');
     }
 
     document.getElementById('start-btn').onclick = async () => {
-        const num = document.getElementById('order_number').value;
-        if (!num) return alert('Введите номер');
+        const num = document.getElementById('order_number').value.trim();
+        if (!num) return alert('Введите номер заказа');
+
         try {
-            const res = await (await fetch(`${API}/orders`, {
+            const res = await apiFetch(`${API}/orders`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({ order_number: num, restaurant_id: rId })
-            })).json();
+                body: JSON.stringify({ order_number: num }),
+            });
             if (res.success) {
-                currentId = res.order_id;
-                localStorage.setItem(`id_${rId}`, currentId);
-                localStorage.setItem(`num_${rId}`, num);
+                currentOrderId = res.order_id;
+                localStorage.setItem(`order_id_${restaurantSlug}`, currentOrderId);
+                localStorage.setItem(`order_num_${restaurantSlug}`, num);
                 showStatus(num);
-                startCheck();
-            } else { alert(res.message || res.error); }
-        } catch { alert('Ошибка сети'); }
+                startPolling();
+            } else {
+                alert(res.message || res.error || 'Ошибка');
+            }
+        } catch (err) {
+            alert(err.message || 'Ошибка сети');
+        }
     };
 
-    function startCheck() {
-        if (interval) clearInterval(interval);
-        interval = setInterval(async () => {
-            try {
-                const res = await (await fetch(`${API}/orders/status?order_id=${currentId}&restaurant_id=${rId}`)).json();
-                if (res.status === 'ready') {
-                    clearInterval(interval);
-                    document.getElementById('status-text').innerHTML = "🎉 Ваш заказ ГОТОВ!";
-                    document.getElementById('status-text').className = '';
-                }
-            } catch (e) { console.error(e); }
-        }, 5000);
+    function startPolling() {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(checkStatus, 5000);
+        checkStatus();
+    }
+
+    async function checkStatus() {
+        if (!currentOrderId) return;
+        try {
+            const res = await apiFetch(`${API}/orders/status?order_id=${currentOrderId}`);
+            const statusText = document.getElementById('status-text');
+            if (res.status === 'ready') {
+                clearInterval(pollTimer);
+                statusText.innerHTML = '🎉 Ваш заказ ГОТОВ!';
+                statusText.className = 'status-ready';
+            } else if (res.status === 'cooking') {
+                statusText.innerHTML = '👨‍🍳 Готовится...';
+            } else if (res.status === 'not_found') {
+                statusText.innerHTML = '⚠️ Заказ не найден';
+            } else {
+                statusText.innerHTML = '⏳ Ожидает подтверждения...';
+            }
+        } catch (err) {
+            if (err.status === 403) {
+                document.getElementById('status-text').innerHTML = '⚠️ Заведение временно недоступно';
+                clearInterval(pollTimer);
+            } else {
+                console.error(err);
+            }
+        }
     }
 
     document.getElementById('reset-btn').onclick = () => {
-        clearInterval(interval);
-        localStorage.removeItem(`id_${rId}`);
-        localStorage.removeItem(`num_${rId}`);
-        document.getElementById('status-screen').classList.add('hidden');
-        document.getElementById('form-screen').classList.remove('hidden');
+        clearInterval(pollTimer);
+        localStorage.removeItem(`order_id_${restaurantSlug}`);
+        localStorage.removeItem(`order_num_${restaurantSlug}`);
+        currentOrderId = null;
+        document.getElementById('order_number').value = '';
+        showScreen('form-screen');
     };
 </script>
 </body>

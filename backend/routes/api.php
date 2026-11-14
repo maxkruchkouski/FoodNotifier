@@ -7,57 +7,64 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| ПУБЛИЧНЫЕ РОУТЫ ДЛЯ КЛИЕНТОВ, КУХНИ И ТАБЛО
+| ПУБЛИЧНЫЕ РОУТЫ (без тенанта)
 |--------------------------------------------------------------------------
 */
 
-// Получить список активных ресторанов для выбора гостем
 Route::get('/restaurants/list', [OrderController::class, 'getActiveRestaurants']);
 
-// Роуты для заказов (клиентский интерфейс index.html)
-Route::post('/orders', [OrderController::class, 'store']);
-Route::get('/orders/status', [OrderController::class, 'checkStatus']);
-
-// Роуты для экрана кухни (kitchen.html) и табло (board.html)
-Route::get('/kitchen/orders', [OrderController::class, 'getCookingOrders']);
-Route::get('/board/orders', [OrderController::class, 'getBoardOrders']);
-
-// Действия кухни
-Route::post('/kitchen/orders/start', [OrderController::class, 'startCooking']);
-Route::post('/kitchen/orders/ready', [OrderController::class, 'markReady']);
-
+Route::post('/admin/login', [AdminController::class, 'login']);
 
 /*
 |--------------------------------------------------------------------------
-| ЗАЩИЩЕННАЯ АДМИНКА И SAAS ПАНЕЛЬ (ПОЛНОСТЬЮ ИСПРАВЛЕНО)
+| ГОСТЕВЫЕ + КУХНЯ + ТАБЛО (тенант обязателен)
 |--------------------------------------------------------------------------
 */
 
-// Публичный вход в админку
-Route::post('/admin/login', [AdminController::class, 'login']);
+Route::middleware(['resolve.tenant', 'check.billing'])->group(function () {
+    Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/orders/status', [OrderController::class, 'checkStatus']);
 
-// Закрытые роуты админки (требуют Sanctum токен)
+    Route::get('/kitchen/orders', [OrderController::class, 'getCookingOrders']);
+    Route::get('/board/orders', [OrderController::class, 'getBoardOrders']);
+    Route::post('/kitchen/orders/start', [OrderController::class, 'startCooking']);
+    Route::post('/kitchen/orders/ready', [OrderController::class, 'markReady']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| АНАЛИТИКА (тенант обязателен, но без billing — чтобы owner видел KPI даже при блокировке)
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['resolve.tenant'])->group(function () {
+    Route::get('/analytics/kpi', [AnalyticsController::class, 'getKpiMetrics']);
+    Route::get('/analytics/chart', [AnalyticsController::class, 'getChartData']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| АДМИНКА / ДАШБОРД (Sanctum + тенант + доступ)
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
-
-    // Выход и профиль пользователя
     Route::post('/logout', [AdminController::class, 'logout']);
-    Route::get('/user', function (\Illuminate\Http\Request $request) {
-        return $request->user();
-    });
+    Route::get('/user', fn (\Illuminate\Http\Request $request) => $request->user());
 
-    // Управление пользователями / SaaS партнерами (строго через существующий AdminController)
+    // Глобальные (суперадмин)
     Route::get('/owners', [AdminController::class, 'getOwners']);
-    Route::post('/users', [AdminController::class, 'createUser']); // Сюда шлем форму создания клиента SaaS
+    Route::post('/users', [AdminController::class, 'createUser']);
+    Route::get('/qr', [AdminController::class, 'generateQr']);
 
-    // Управление ресторанами (строго через существующий AdminController)
+    // Рестораны (скоуп owner применится в модели)
     Route::get('/restaurants', [AdminController::class, 'getRestaurants']);
-    Route::post('/restaurants', [AdminController::class, 'createRestaurant']); // Сюда шлем форму создания ресторана
+    Route::post('/restaurants', [AdminController::class, 'createRestaurant']);
     Route::post('/restaurants/toggle', [AdminController::class, 'toggleTariff']);
     Route::delete('/restaurants/{id}', [AdminController::class, 'deleteRestaurant']);
 
-    // Аналитика, KPI и дополнительные метрики
-    Route::get('/analytics', [AnalyticsController::class, 'index']);
-    Route::get('/analytics/kpi', [AnalyticsController::class, 'getKpiMetrics']);
-    Route::get('/analytics/chart', [AnalyticsController::class, 'getChartData']);
-    Route::get('/qr', [AdminController::class, 'generateQr']);
+    // KPI для дашборда — с проверкой доступа к конкретному тенанту
+    Route::middleware(['resolve.tenant', 'ensure.tenant.access'])->group(function () {
+        Route::get('/analytics', [AnalyticsController::class, 'getKpiMetrics']);
+    });
 });

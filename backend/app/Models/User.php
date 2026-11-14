@@ -14,8 +14,9 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
-        'password_hash', // Перенесено из монолита
-        'role',          // superadmin или owner
+        'password_hash',
+        'role',
+        'is_superadmin',
     ];
 
     protected $hidden = [
@@ -23,22 +24,20 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-// Указываем Laravel, какое поле использовать в качестве пароля для авторизации
+    protected $casts = [
+        'is_superadmin' => 'boolean',
+    ];
+
     public function getAuthPassword()
     {
         return $this->password_hash;
     }
 
-    /**
-     * Магический геттер для совместимости с Laravel Sanctum и дефолтными Guard.
-     * Возвращает password_hash, когда ядро фреймворка запрашивает скрытое свойство ->password
-     */
     public function getPasswordAttribute()
     {
         return $this->password_hash;
     }
 
-    // Связь: у одного пользователя (owner) может быть много ресторанов
     public function restaurants()
     {
         return $this->hasMany(Restaurant::class, 'owner_id');

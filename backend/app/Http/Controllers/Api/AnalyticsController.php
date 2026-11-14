@@ -11,75 +11,64 @@ use Illuminate\Support\Facades\DB;
 
 class AnalyticsController extends Controller
 {
-    /**
-     * Расчет счетчиков KPI заведения (Двухфакторная модель ожидания и готовки)
-     */
     public function getKpiMetrics(Request $request)
     {
-        $slug = $request->query('restaurant_id');
-        if (empty($slug)) {
-            return response()->json(['error' => 'restaurant_id не указан'], 400);
-        }
+        $tenant = app('tenant');
+        abort_unless($tenant, 404, 'Tenant not resolved');
 
-        // 1. Всего визитов / сканирований QR заведения
-        $totalVisits = Analytics::query()->where('restaurant_id', $slug)->count();
+        $totalVisits = Analytics::query()->where('restaurant_id', $tenant->id)->count();
 
-        // 2. Активных заказов сейчас на кухне в работе (очередь + готовка)
-        $activeOrders = Order::query()->where('restaurant_id', $slug)
+        $activeOrders = Order::query()
+            ->where('restaurant_id', $tenant->id)
             ->whereIn('status', ['pending', 'cooking'])
             ->count();
 
-        // 3. KPI 1: Среднее время ожидания повара (от чека до клика "В работу") в минутах
-        $waitMinutes = Order::query()->where('restaurant_id', $slug)
+        $waitMinutes = Order::query()
+            ->where('restaurant_id', $tenant->id)
             ->whereNotNull('cooking_started_at')
             ->select(DB::raw("ROUND(AVG(EXTRACT(EPOCH FROM (cooking_started_at - created_at))/60)) as avg_wait"))
-            ->first()->avg_wait;
+            ->value('avg_wait');
 
-        // 4. KPI 2: Средняя чистая скорость готовки (от "В работу" до "Готов") в минутах
-        $cookMinutes = Order::query()->where('restaurant_id', $slug)
+        $cookMinutes = Order::query()
+            ->where('restaurant_id', $tenant->id)
             ->whereNotNull('ready_at')
             ->whereNotNull('cooking_started_at')
             ->select(DB::raw("ROUND(AVG(EXTRACT(EPOCH FROM (ready_at - cooking_started_at))/60)) as avg_cook"))
-            ->first()->avg_cook;
+            ->value('avg_cook');
 
         return response()->json([
             'total_visits' => $totalVisits,
             'active_orders' => $activeOrders,
-            'avg_wait_time' => $waitMinutes !== null ? $waitMinutes . " мин" : "0 мин",
-            'avg_cook_time' => $cookMinutes !== null ? $cookMinutes . " мин" : "0 мин",
+            'avg_wait_time' => $waitMinutes !== null ? $waitMinutes . ' мин' : '0 мин',
+            'avg_cook_time' => $cookMinutes !== null ? $cookMinutes . ' мин' : '0 мин',
         ]);
     }
 
-    /**
-     * Выгрузка исторических данных для гистограммы трафика
-     */
     public function getChartData(Request $request)
     {
-        $slug = $request->query('restaurant_id');
-        $period = $request->query('period', 'week'); // week или month
+        $tenant = app('tenant');
+        abort_unless($tenant, 404, 'Tenant not resolved');
 
-        if (empty($slug)) {
-            return response()->json([], 400);
-        }
+        $period = $request->query('period', 'week');
 
         if ($period === 'month') {
-            // За последние 30 дней с форматированием DD.MM
-            $chartData = Analytics::query()->where('restaurant_id', $slug)
+            $data = Analytics::query()
+                ->where('restaurant_id', $tenant->id)
                 ->where('created_at', '>=', Carbon::now()->subDays(30))
-                ->select(DB::raw("to_char(created_at, 'DD.MM') as label"), DB::raw("COUNT(*) as count"))
+                ->select(DB::raw("to_char(created_at, 'DD.MM') as label"), DB::raw('COUNT(*) as count'))
                 ->groupBy('label')
-                ->orderBy('label', 'asc')
+                ->orderBy('label')
                 ->get();
         } else {
-            // За последнюю неделю с форматированием дня недели (Dy)
-            $chartData = Analytics::query()->where('restaurant_id', $slug)
+            $data = Analytics::query()
+                ->where('restaurant_id', $tenant->id)
                 ->where('created_at', '>=', Carbon::now()->subDays(7))
-                ->select(DB::raw("to_char(created_at, 'Dy') as label"), DB::raw("COUNT(*) as count"))
+                ->select(DB::raw("to_char(created_at, 'Dy') as label"), DB::raw('COUNT(*) as count'))
                 ->groupBy('label')
-                ->orderBy(DB::raw("min(created_at)"), 'asc')
+                ->orderBy(DB::raw('min(created_at)'))
                 ->get();
         }
 
-        return response()->json($chartData);
+        return response()->json($data);
     }
 }
