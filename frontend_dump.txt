@@ -1,0 +1,374 @@
+
+=== FILE: src/components/CustomerBoard.jsx ===
+import { useState, useEffect, useRef } from 'react'
+
+export default function CustomerBoard({ restaurantId }) {
+    const [cookingOrders, setCookingOrders] = useState([])
+    const [readyOrders, setReadyOrders] = useState([])
+    const [error, setError] = useState(null)
+    const prevReadyIds = useRef([])
+
+    const fetchBoardOrders = async () => {
+        try {
+            const response = await fetch(`/api/v1/board/orders?restaurant_id=${restaurantId}`)
+            if (!response.ok) {
+                if (response.status === 403) throw new Error('billing_blocked')
+                throw new Error('Ошибка сервера')
+            }
+            const orders = await response.json()
+            setCookingOrders(orders.filter(o => o.status === 'cooking'))
+            const ready = orders.filter(o => o.status === 'ready')
+            setReadyOrders(ready)
+            setError(null)
+
+            const currentReadyIds = ready.map(o => o.order_number)
+            const hasNewReady = currentReadyIds.some(num => !prevReadyIds.current.includes(num))
+            if (hasNewReady && prevReadyIds.current.length > 0) playSound()
+            prevReadyIds.current = currentReadyIds
+        } catch (err) {
+            setError(err.message === 'billing_blocked' ? 'Доступ заблокирован. Оплатите тариф.' : 'Соединение потеряно...')
+        }
+    }
+
+    const playSound = () => {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)()
+            const osc = ctx.createOscillator()
+            const gain = ctx.createGain()
+            osc.type = 'sine'
+            osc.frequency.setValueAtTime(587.33, ctx.currentTime)
+            osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15)
+            gain.gain.setValueAtTime(0.1, ctx.currentTime)
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4)
+            osc.connect(gain)
+            gain.connect(ctx.destination)
+            osc.start()
+            osc.stop(ctx.currentTime + 0.4)
+        } catch (e) {}
+    }
+
+    useEffect(() => {
+        if (!restaurantId) return
+        fetchBoardOrders()
+        const interval = setInterval(fetchBoardOrders, 5000)
+        return () => clearInterval(interval)
+    }, [restaurantId])
+
+    if (error) return <div style={{ background: '#000', color: '#e74c3c', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '24px' }}>⚠️ {error}</div>
+
+    return (
+        <div style={{ background: '#0a0a0c', color: '#fff', height: '100vh', width: '100vw', display: 'flex', overflow: 'hidden', fontFamily: 'sans-serif' }}>
+            <div style={{ width: '50%', borderRight: '4px solid #1c1c24', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ background: '#13131a', padding: '30px', textAlign: 'center', fontSize: '32px', fontWeight: 'bold', color: '#8e929b' }}>ГОТОВЯТСЯ</div>
+                <div style={{ padding: '40px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '25px' }}>
+                    {cookingOrders.map((o, i) => <div key={i} style={{ background: '#16161e', borderRadius: '16px', padding: '20px', textAlign: 'center', fontSize: '36px', fontWeight: 'bold', color: '#a5a7b0' }}>{o.order_number}</div>)}
+                </div>
+            </div>
+            <div style={{ width: '50%', display: 'flex', flexDirection: 'column', background: '#050c05' }}>
+                <div style={{ background: '#1c3d1c', padding: '30px', textAlign: 'center', fontSize: '32px', fontWeight: 'bold', color: '#2ecc71' }}>ГОТОВО!</div>
+                <div style={{ padding: '40px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '30px' }}>
+                    {readyOrders.map((o, i) => <div key={i} style={{ background: '#2ecc71', borderRadius: '20px', padding: '25px', textAlign: 'center', fontSize: '54px', fontWeight: '#000', color: '#000' }}>{o.order_number}</div>)}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+=== FILE: src/components/KitchenMonitor.jsx ===
+import { useState, useEffect, useRef } from 'react'
+
+export default function KitchenMonitor({ restaurantId }) {
+    const [orders, setOrders] = useState([])
+    const [error, setError] = useState(null)
+    const intervalRef = useRef(null)
+
+    const loadOrders = async () => {
+        try {
+            const res = await fetch(`/api/v1/kitchen/orders?restaurant_id=${restaurantId}`)
+            if (!res.ok) throw new Error(res.status === 403 ? 'blocked' : 'err')
+            setOrders(await res.json())
+            setError(null)
+        } catch (err) {
+            setError(err.message === 'blocked' ? '🔒 Срок действия лицензии FoodNotifier истек.' : 'Потеря соединения...')
+        }
+    }
+
+    useEffect(() => {
+        loadOrders()
+        intervalRef.current = setInterval(loadOrders, 3000)
+        return () => clearInterval(intervalRef.current)
+    }, [restaurantId])
+
+    const action = async (id, type) => {
+        await fetch(`/api/v1/kitchen/orders/${id}/${type}?restaurant_id=${restaurantId}`, { method: 'PATCH' })
+        loadOrders()
+    }
+
+    if (error) return <div style={{ background: '#0c0c0e', color: '#e74c3c', padding: '40px', textAlign: 'center', fontFamily: 'sans-serif' }}><h2>{error}</h2></div>
+
+    return (
+        <div style={{ background: '#141419', color: '#fff', minHeight: '100vh', padding: '20px', fontFamily: 'sans-serif' }}>
+            <header style={{ background: '#1e1e24', padding: '15px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', border: '1px solid #2d2d35' }}>
+                <h2>👨‍🍳 Монитор кухни: {restaurantId}</h2>
+            </header>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px', marginTop: '20px' }}>
+                {orders.map(o => (
+                    <div key={o.id} style={{ background: o.status === 'cooking' ? '#22222b' : '#1e1e24', border: o.status === 'cooking' ? '1px solid #ff9f1c' : '1px solid #2d2d35', padding: '20px', borderRadius: '16px' }}>
+                        <span style={{ fontSize: '11px', color: '#7f8c8d' }}>{o.status === 'cooking' ? 'ГОТОВИТСЯ' : 'В ОЧЕРЕДИ'}</span>
+                        <h1 style={{ color: '#ff9f1c', margin: '5px 0' }}>#{o.order_number}</h1>
+                        <button onClick={() => action(o.id, o.status === 'pending' ? 'start' : 'ready')} style={{ width: '100%', padding: '10px', background: o.status === 'pending' ? '#ff9f1c' : '#2ecc71', color: o.status === 'pending' ? '#000' : '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' }}>
+                            {o.status === 'pending' ? 'В РАБОТУ 👨‍🍳' : 'ГОТОВ 🛎️'}
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+=== FILE: src/components/GuestTracker.jsx ===
+import { useState, useEffect, useRef } from 'react'
+
+export default function GuestTracker() {
+    const [restaurantId, setRestaurantId] = useState('default_cafe')
+    const [orderNumber, setOrderNumber] = useState('')
+    const [currentOrderId, setCurrentOrderId] = useState(null)
+    const [screen, setScreen] = useState('form') // form, status
+    const [orderStatus, setOrderStatus] = useState('pending')
+    const checkInterval = useRef(null)
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search)
+        const resId = params.get('restaurant') || 'default_cafe'
+        setRestaurantId(resId)
+
+        fetch('/api/v1/analytics/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ restaurant_id: resId })
+        }).catch(() => {})
+
+        const savedId = localStorage.getItem(`active_order_id_${resId}`)
+        const savedNum = localStorage.getItem(`active_order_num_${resId}`)
+        if (savedId && savedNum) {
+            setCurrentOrderId(savedId)
+            setOrderNumber(savedNum)
+            setScreen('status')
+        }
+        return () => clearInterval(checkInterval.current)
+    }, [])
+
+    useEffect(() => {
+        if (screen === 'status' && currentOrderId) {
+            const fetchStatus = async () => {
+                const res = await fetch(`/api/v1/orders/${currentOrderId}/status?restaurant_id=${restaurantId}`)
+                const data = await res.json()
+                if (data.status) setOrderStatus(data.status)
+            }
+            fetchStatus()
+            checkInterval.current = setInterval(fetchStatus, 4000)
+        } else {
+            clearInterval(checkInterval.current)
+        }
+        return () => clearInterval(checkInterval.current)
+    }, [screen, currentOrderId])
+
+    const handleStartTracking = async (e) => {
+        e.preventDefault()
+        const res = await fetch(`/api/v1/orders?restaurant_id=${restaurantId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_number: orderNumber })
+        })
+        const data = await res.json()
+        if (data.success) {
+            setCurrentOrderId(data.order_id)
+            localStorage.setItem(`active_order_id_${restaurantId}`, data.order_id)
+            localStorage.setItem(`active_order_num_${restaurantId}`, orderNumber)
+            setScreen('status')
+        }
+    }
+
+    return (
+        <div style={{ background: '#121212', color: '#fff', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
+            <div style={{ background: '#1e1e1e', padding: '30px 24px', borderRadius: '20px', width: '340px', textAlign: 'center', border: '1px solid #2d2d2d' }}>
+                <h1 style={{ fontSize: '24px', margin: '0 0 10px 0', color: '#ff9f1c' }}>FoodNotifier</h1>
+                <p style={{ color: '#a0a0a0', fontSize: '12px' }}>Заведение: {restaurantId}</p>
+
+                {screen === 'form' ? (
+                    <form onSubmit={handleStartTracking}>
+                        <input type="number" value={orderNumber} onChange={e => setOrderNumber(e.target.value)} placeholder="Номер заказа" style={{ width: '100%', padding: '14px', background: '#2a2a2a', border: '1px solid #3d3d3d', borderRadius: '8px', color: '#fff', textAlign: 'center', fontSize: '20px', margin: '20px 0', boxSizing: 'border-box' }} required />
+                        <button type="submit" style={{ width: '100%', padding: '14px', background: '#ff9f1c', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Следить</button>
+                    </form>
+                ) : (
+                    <div>
+                        <div style={{ background: '#2a2a2a', padding: '6px 12px', borderRadius: '20px', display: 'inline-block', margin: '15px 0' }}>ЗАКАЗ № {orderNumber}</div>
+                        <h2 style={{ color: orderStatus === 'ready' ? '#2ecc71' : '#ff9f1c', margin: '20px 0' }}>
+                            {orderStatus === 'ready' ? '🎉 Готов!' : orderStatus === 'cooking' ? '🔥 Готовится...' : '⏳ В очереди'}
+                        </h2>
+                        <button onClick={() => { localStorage.clear(); setScreen('form'); }} style={{ background: 'none', border: '1px solid #3d3d3d', color: '#a0a0a0', padding: '8px', width: '100%', borderRadius: '8px', cursor: 'pointer' }}>Сбросить</button>
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+=== FILE: src/App.jsx ===
+import { useState, useEffect } from 'react'
+import CustomerBoard from './components/CustomerBoard'
+import GuestTracker from './components/GuestTracker'
+import KitchenMonitor from './components/KitchenMonitor'
+
+export default function App() {
+    const [view, setView] = useState('admin') // admin, board, track, kitchen
+    const [selectedSlug, setSelectedSlug] = useState('subway')
+    const [data, setData] = useState(null)
+    const [period, setPeriod] = useState('week')
+    const [newName, setNewName] = useState('')
+    const [newSlug, setNewSlug] = useState('')
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('view')) setView(params.get('view'))
+        if (params.get('restaurant_id')) setSelectedSlug(params.get('restaurant_id'))
+        if (params.get('restaurant')) setSelectedSlug(params.get('restaurant'))
+    }, [])
+
+    const loadData = async () => {
+        try {
+            const res = await fetch(`/api/v1/dashboard?stats=${selectedSlug}&period=${period}`)
+            if (!res.ok) return
+            const json = await res.json()
+            setData(json)
+        } catch (err) {
+            console.error("API Error:", err)
+        }
+    }
+
+    useEffect(() => {
+        if (view === 'admin') loadData()
+    }, [selectedSlug, period, view])
+
+    const handleCreate = async (e) => {
+        e.preventDefault()
+        if (!newName || !newSlug) return
+        try {
+            const res = await fetch('/api/v1/restaurants', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName, slug: newSlug })
+            })
+            if (res.ok) { setNewName(''); setNewSlug(''); loadData(); }
+        } catch (e) {}
+    }
+
+    const handleToggle = async (id) => {
+        await fetch(`/api/v1/restaurants/${id}/toggle`, { method: 'PATCH' })
+        loadData()
+    }
+
+    const handleDelete = async (id) => {
+        if (confirm("Удалить заведение?")) {
+            await fetch(`/api/v1/restaurants/${id}`, { method: 'DELETE' })
+            loadData()
+        }
+    }
+
+    if (view === 'board') return <CustomerBoard restaurantId={selectedSlug} />
+    if (view === 'track') return <GuestTracker />
+    if (view === 'kitchen') return <KitchenMonitor restaurantId={selectedSlug} />
+
+    if (!data) {
+        return (
+            <div style={{ background: '#0c0c0e', color: '#fff', padding: '20px', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                Загрузка экосистемы FoodNotifier...
+            </div>
+        )
+    }
+
+    const metrics = data.metrics || { count_total_visits: 0, count_active_orders: 0, avg_wait_time: '0 мин', avg_cook_time: '0 мин', chart_data: [] }
+    const restaurants = data.restaurants || []
+
+    return (
+        <div style={{ background: '#0c0c0e', color: '#fff', minHeight: '100vh', padding: '30px', fontFamily: 'sans-serif' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2>🥑 FoodNotifier SaaS Панель Администратора</h2>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={() => setView('kitchen')} style={{ background: '#34495e', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', cursor: 'pointer' }}>👨‍🍳 На кухню</button>
+                    <button onClick={() => setView('board')} style={{ background: '#ff9f1c', color: '#000', border: 'none', padding: '10px 15px', borderRadius: '6px', cursor: 'pointer' }}>📺 На экран зала</button>
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '30px' }}>
+                <div style={{ background: '#16161a', padding: '20px', borderRadius: '12px', flex: 1, border: '1px solid #272730' }}>
+                    <div style={{ color: '#8e929b', fontSize: '13px' }}>Всего сканирований</div>
+                    <div style={{ fontSize: '24px', color: '#ff9f1c', fontWeight: 'bold' }}>{metrics.count_total_visits}</div>
+                </div>
+                <div style={{ background: '#16161a', padding: '20px', borderRadius: '12px', flex: 1, border: '1px solid #272730' }}>
+                    <div style={{ color: '#8e929b', fontSize: '13px' }}>Заказов в работе</div>
+                    <div style={{ fontSize: '24px', color: '#ff9f1c', fontWeight: 'bold' }}>{metrics.count_active_orders}</div>
+                </div>
+                <div style={{ background: '#16161a', padding: '20px', borderRadius: '12px', flex: 1, border: '1px solid #272730' }}>
+                    <div style={{ color: '#8e929b', fontSize: '13px' }}>Ожидание повара</div>
+                    <div style={{ fontSize: '24px', color: '#e74c3c', fontWeight: 'bold' }}>{metrics.avg_wait_time}</div>
+                </div>
+                <div style={{ background: '#16161a', padding: '20px', borderRadius: '12px', flex: 1, border: '1px solid #272730' }}>
+                    <div style={{ color: '#8e929b', fontSize: '13px' }}>Чистая готовка</div>
+                    <div style={{ fontSize: '24px', color: '#2ecc71', fontWeight: 'bold' }}>{metrics.avg_cook_time}</div>
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '30px' }}>
+                <div style={{ width: '40%', background: '#16161a', padding: '20px', borderRadius: '12px', border: '1px solid #272730' }}>
+                    <h3>🏪 Мои Заведения</h3>
+                    <form onSubmit={handleCreate} style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+                        <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Название" style={{ background: '#202026', border: '1px solid #272730', color: '#fff', padding: '8px', borderRadius: '6px', flex: 1 }} required />
+                        <input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="slug" style={{ background: '#202026', border: '1px solid #272730', color: '#fff', padding: '8px', borderRadius: '6px', flex: 1 }} required />
+                        <button type="submit" style={{ background: '#ff9f1c', border: 'none', padding: '8px 15px', borderRadius: '6px', fontWeight: 'bold' }}>+</button>
+                    </form>
+                    {restaurants.map(res => (
+                        <div key={res.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #272730' }}>
+              <span onClick={() => setSelectedSlug(res.slug)} style={{ cursor: 'pointer', color: selectedSlug === res.slug ? '#ff9f1c' : '#fff', fontWeight: selectedSlug === res.slug ? 'bold' : 'normal' }}>
+                {res.name} ({res.slug})
+              </span>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button onClick={() => handleToggle(res.id)} style={{ background: res.is_active ? '#2ecc71' : '#e74c3c', border: 'none', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>{res.is_active ? 'Вкл' : 'Выкл'}</button>
+                                <button onClick={() => handleDelete(res.id)} style={{ background: 'none', border: '1px solid #e74c3c', color: '#e74c3c', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer' }}>×</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div style={{ width: '60%', background: '#16161a', padding: '20px', borderRadius: '12px', border: '1px solid #272730' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                        <h3>📊 Трафик кликов: {selectedSlug}</h3>
+                        <select value={period} onChange={e => setPeriod(e.target.value)} style={{ background: '#202026', color: '#fff', border: '1px solid #272730', padding: '5px', borderRadius: '6px' }}>
+                            <option value="week">Неделя</option>
+                            <option value="month">Месяц</option>
+                        </select>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'end', height: '150px', background: '#111114', padding: '15px', gap: '12px', borderRadius: '10px' }}>
+                        {(metrics.chart_data || []).map((item, idx) => {
+                            const maxCount = Math.max(...metrics.chart_data.map(d => d.count)) || 1;
+                            return (
+                                <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'end' }}>
+                                    <div style={{ color: '#ff9f1c', fontSize: '11px' }}>{item.count}</div>
+                                    <div style={{ width: '100%', height: `${(item.count / maxCount) * 100}%`, background: '#ff9f1c', borderRadius: '4px 4px 0 0' }}></div>
+                                    <div style={{ color: '#8e929b', fontSize: '10px', marginTop: '6px' }}>{item.label}</div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+=== FILE: src/main.jsx ===
+import { createRoot } from 'react-dom/client'
+import App from './App.jsx'
+
+createRoot(document.getElementById('root')).render(<App />)
+
