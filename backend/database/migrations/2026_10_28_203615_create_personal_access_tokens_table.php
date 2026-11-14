@@ -8,9 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Блок Schema::create('users') удалён отсюда,
-        // так как пользователи создаются в самой первой миграции 000000_create_users_table.
-
         Schema::create('restaurants', function (Blueprint $table) {
             $table->id();
             $table->string('slug', 50)->unique();
@@ -19,28 +16,10 @@ return new class extends Migration
             $table->foreignId('owner_id')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
         });
-
-        Schema::create('orders', function (Blueprint $table) {
-            $table->id();
-            $table->string('restaurant_id', 50)->index();
-            $table->string('order_number', 50);
-            $table->string('status', 20)->default('pending'); // pending, cooking, ready
-            $table->timestamp('cooking_started_at')->nullable();
-            $table->timestamp('ready_at')->nullable();
-            $table->timestamps();
-        });
-
-        Schema::create('analytics', function (Blueprint $table) {
-            $table->id();
-            $table->string('restaurant_id', 50)->index();
-            $table->timestamp('created_at')->useCurrent(); // Сохраняем useCurrent для трекера визитов
-        });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('analytics');
-        Schema::dropIfExists('orders');
         Schema::dropIfExists('restaurants');
     }
 };

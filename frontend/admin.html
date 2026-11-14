@@ -2,207 +2,393 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SaaS Панель | FoodNotifier</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Панель управления — FoodNotifier SaaS</title>
     <style>
-        :root { --bg: #121212; --card: #1e1e1e; --accent: #ff9f1c; --text: #fff; --border: #2d2d2d; --success: #2ecc71; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box; }
-        .card { background: var(--card); border-radius: 16px; padding: 30px 24px; border: 1px solid var(--border); width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
-        .wide-card { max-width: 800px; width: 100%; text-align: left; }
-        h2, h3 { margin: 0 0 20px 0; color: var(--accent); text-align: center; }
-        .form-group { margin-bottom: 12px; }
-        label { display: block; margin-bottom: 6px; font-size: 14px; color: #aaa; }
-        input, select { width: 100%; padding: 10px; background: #2a2a2a; border: 1px solid var(--border); border-radius: 8px; color: #fff; box-sizing: border-box; font-size: 14px; }
-        input:focus, select:focus { border-color: var(--accent); outline: none; }
-        button, .btn { width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 8px; color: #000; font-size: 15px; font-weight: bold; cursor: pointer; }
-        button:hover { opacity: 0.9; }
-        .hidden { display: none !important; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
-        th { color: var(--accent); text-transform: uppercase; font-size: 12px; }
-        .tab-btn { width: auto; padding: 10px 16px; background: #222; color: #aaa; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 5px; }
-        .tab-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
-        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
-        .stat-card { background: #1a1a1a; padding: 15px; border-radius: 10px; border: 1px solid var(--border); text-align: center; }
-        .stat-val { font-size: 22px; font-weight: bold; color: var(--accent); margin-top: 5px; }
-    </style>
-</head>
-<body>
-
-<!-- ОКНО ВХОДА -->
-<div class="card" id="loginBlock">
-    <h2>Вход в SaaS Панель</h2>
-    <form id="loginForm" onsubmit="return false;">
-        <div class="form-group"><label>Email</label><input type="email" id="email" required placeholder="admin@foodnotifier.ru"></div>
-        <div class="form-group"><label>Пароль</label><input type="password" id="password" required placeholder="••••••••"></div>
-        <button type="submit">Войти в панель</button>
-        <div class="err hidden" id="loginError" style="color:#ff5252; margin-top:10px; text-align:center;"></div>
-    </form>
-</div>
-
-<!-- ГЛАВНЫЙ ДАШБОРД -->
-<div class="card wide-card hidden" id="dashboardBlock">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:15px;">
-        <h2 style="margin:0;">Панель FoodNotifier</h2>
-        <button id="logoutBtn" style="width:auto; padding:6px 12px; background:#333; color:#fff; border:1px solid var(--border)">Выйти</button>
-    </div>
-
-    <div style="margin-bottom: 20px;">
-        <button class="tab-btn active" onclick="switchTab('analytics')">📊 Метрики</button>
-        <button class="tab-btn" onclick="switchTab('restaurants')">🏢 Рестораны</button>
-        <button class="tab-btn" onclick="switchTab('users')">👥 Клиенты SaaS</button>
-    </div>
-
-    <div id="tab-analytics" class="tab-sec">
-        <div class="stat-grid">
-            <div class="stat-card"><div>Всего заказов</div><div class="stat-val" id="st-orders">0</div></div>
-            <div class="stat-card"><div>Активные точки</div><div class="stat-val" id="st-rests">0</div></div>
-            <div class="stat-card"><div>Ср. время готовки</div><div class="stat-val">4.5 мин</div></div>
-        </div>
-    </div>
-
-    <div id="tab-restaurants" class="tab-sec hidden">
-        <form id="restaurantForm" style="background:#1a1a1a; padding:15px; border-radius:10px; margin-bottom:20px; border:1px solid var(--border)">
-            <h3 style="margin:0 0 15px 0; text-align:left;">Добавить ресторан</h3>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-                <input type="text" id="rest_name" placeholder="Название (Додо)" required>
-                <input type="text" id="rest_slug" placeholder="Slug (dodo)" required>
-            </div>
-            <div class="form-group"><select id="rest_owner"><option value="">Выбор владельца...</option></select></div>
-            <button type="submit" style="width:auto; padding:10px 20px;">Создать точку</button>
-        </form>
-        <table>
-            <thead><tr><th>Название</th><th>Slug</th><th>Тариф</th><th>Экраны</th></tr></thead>
-            <tbody id="restsTable"></tbody>
-        </table>
-    </div>
-
-    <div id="tab-users" class="tab-sec hidden">
-        <form id="userForm" style="background:#1a1a1a; padding:15px; border-radius:10px; border:1px solid var(--border)">
-            <h3 style="margin:0 0 15px 0; text-align:left;">Создать аккаунт владельца франшизы</h3>
-            <div class="form-group"><input type="email" id="owner_email" placeholder="Email партнера" required></div>
-            <button type="submit" style="width:auto; padding:10px 20px;">Выдать доступ</button>
-            <div id="userRes" style="margin-top:10px; color:var(--success); font-weight:bold;"></div>
-        </form>
-    </div>
-</div>
-
-<script>
-    // Поднимаем вспомогательные функции на самый верх для безопасности
-    const id = (i) => document.getElementById(i);
-    const API = '/api';
-    const tkn = () => localStorage.getItem('fs_token');
-
-    // Навигация по вкладкам
-    function switchTab(name) {
-        document.querySelectorAll('.tab-sec').forEach(el => el.classList.add('hidden'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById(`tab-${name}`).classList.remove('hidden');
-        if (event && event.target) event.target.classList.add('active');
-    }
-
-    // Ожидание загрузки структуры страницы браузером перед биндингом событий
-    window.addEventListener('DOMContentLoaded', () => {
-
-        // Форма авторизации
-        id('loginForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const errBox = id('loginError');
-            errBox.classList.add('hidden');
-            try {
-                const res = await (await fetch(`${API}/admin/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify({ email: id('email').value, password: id('password').value })
-                })).json();
-                if (res.success) {
-                    localStorage.setItem('fs_token', res.token);
-                    loadDash();
-                } else {
-                    errBox.innerText = res.message || 'Ошибка';
-                    errBox.classList.remove('hidden');
-                }
-            } catch {
-                errBox.innerText = 'Ошибка сети';
-                errBox.classList.remove('hidden');
-            }
-        };
-
-        // Форма добавления ресторана
-        id('restaurantForm').onsubmit = async (e) => {
-            e.preventDefault();
-            try {
-                const res = await (await fetch(`${API}/admin/restaurants`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${tkn()}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: id('rest_name').value, slug: id('rest_slug').value, owner_id: id('rest_owner').value })
-                })).json();
-                if (res.success) { alert('Успешно!'); id('restaurantForm').reset(); loadRests(); }
-            } catch { alert('Ошибка'); }
-        };
-
-        // Форма создания пользователя франшизы
-        id('userForm').onsubmit = async (e) => {
-            e.preventDefault();
-            try {
-                const res = await (await fetch(`${API}/admin/users`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${tkn()}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: id('owner_email').value })
-                })).json();
-                if (res.success) { id('userRes').innerHTML = `Создан! Пароль: ${res.message.split(' ').pop()}`; loadOwners(); }
-            } catch { alert('Ошибка'); }
-        };
-
-        // Кнопка логаута
-        id('logoutBtn').onclick = () => { localStorage.clear(); window.location.reload(); };
-
-        // Автоматический вход при наличии сохраненного токена
-        if (tkn()) loadDash();
-    });
-
-    // Логика переключения экранов дашборда
-    function loadDash() {
-        id('loginBlock').classList.add('hidden');
-        id('dashboardBlock').classList.remove('hidden');
-        loadRests(); loadOwners();
-    }
-
-    // Динамическая загрузка списка ресторанов
-    async function loadRests() {
-        const tb = id('restsTable');
-        try {
-            const res = await (await fetch(`${API}/admin/restaurants`, { headers: { 'Authorization': `Bearer ${tkn()}` } })).json();
-            tb.innerHTML = '';
-            if (res.length) {
-                id('st-rests').innerText = res.length;
-                res.forEach(c => {
-                    tb.innerHTML += `<tr>
-                        <td><strong>${c.name}</strong></td>
-                        <td><code>${c.slug}</code></td>
-${c.is_active ? '🟢 Оплачен' : '🔴 Блок'}
-|
-`;
-                });
-            } else { tb.innerHTML = 'Нет точек'; }
-        } catch { tb.innerHTML = 'Ошибка сети'; }
-    }
-    // Динамическая загрузка выпадающего списка владельцев
-    async function loadOwners() {
-        const sel = id('rest_owner');
-        try {
-            // ИСПРАВЛЕНО: Добавлены обратные кавычки для шаблонной строки fetch
-            const res = await (await fetch(`${API}/admin/owners`, { headers: { 'Authorization': `Bearer ${tkn()}` } })).json();
-            sel.innerHTML = '<option value="">Выбор владельца...</option>';
-
-            // ИСПРАВЛЕНО: Тег option теперь строго обернут в косые кавычки (бекстики)
-            if (Array.isArray(res)) {
-                res.forEach(o => sel.innerHTML += `<option value="${o.id}">${o.email}</option>`);
-            }
-        } catch (e) {
-            console.error('Ошибка загрузки списка владельцев:', e);
+        :root {
+            --bg-main: #121214;
+            --bg-sidebar: #18181c;
+            --bg-card: #1e1e24;
+            --bg-input: #26262f;
+            --primary: #ff9800;
+            --primary-hover: #e68900;
+            --text-main: #f5f5f7;
+            --text-muted: #8a8a93;
+            --border-color: #2a2a35;
+            --sidebar-width: 260px;
+            --sidebar-collapsed-width: 70px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-    }
-</script>
-</body>
-</html>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* --- САЙДБАР (SIDEBAR) --- */
+        aside {
+            width: var(--sidebar-width);
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+            transition: var(--transition);
+        }
+
+        body.sidebar-collapsed aside {
+            width: var(--sidebar-collapsed-width);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            height: 70px;
+        }
+
+        .logo-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .logo-text span {
+            color: var(--primary);
+        }
+
+        body.sidebar-collapsed .logo-text {
+            opacity: 0;
+            pointer-events: none;
+            width: 0;
+        }
+
+        .burger-btn {
+            background: none;
+            border: none;
+            color: var(--text-main);
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: var(--transition);
+        }
+
+        .burger-btn:hover {
+            background-color: var(--bg-input);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 15px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .menu-item button {
+            width: 100%;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 12px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            text-align: left;
+            transition: var(--transition);
+        }
+
+        .menu-item button:hover, .menu-item.active button {
+            color: var(--text-main);
+            background-color: var(--bg-input);
+        }
+
+        .menu-item.active button {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .menu-item button svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            fill: currentColor;
+        }
+
+        .menu-text {
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        body.sidebar-collapsed .menu-text {
+            opacity: 0;
+            pointer-events: none;
+            width: 0;
+        }
+
+        .sidebar-user {
+            padding: 15px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background-color: rgba(0, 0, 0, 0.15);
+            height: 75px;
+            overflow: hidden;
+        }
+
+        .avatar {
+            width: 38px;
+            height: 38px;
+            background-color: var(--primary);
+            color: var(--bg-main);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            transition: var(--transition);
+            white-space: nowrap;
+            flex-grow: 1;
+        }
+
+        body.sidebar-collapsed .sidebar-user {
+            justify-content: center;
+            padding: 15px 0;
+        }
+
+        body.sidebar-collapsed .user-info,
+        body.sidebar-collapsed .logout-btn {
+            display: none;
+        }
+
+        .user-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .user-email {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            transition: var(--transition);
+        }
+
+        .logout-btn:hover {
+            color: #ff4444;
+            background-color: rgba(255, 68, 68, 0.1);
+        }
+
+        /* --- ОСНОВНОЙ КОНТЕНТ (MAIN CONTENT) --- */
+        main {
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+            flex-grow: 1;
+            transition: var(--transition);
+            min-height: 100vh;
+        }
+
+        body.sidebar-collapsed main {
+            margin-left: var(--sidebar-collapsed-width);
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+        }
+
+        .page-header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        input, select {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        input:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
+        }
+
+        /* ИСПРАВЛЕНО: Закрыли блок стилей и тег style */
+        .btn-submit {
+            background-color: var(--primary);
+            color: #121214;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .btn-submit:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .kpi-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .kpi-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background-color: rgba(0, 0, 0, 0.2);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+        }
+
+        tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .action-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            margin-right: 12px;
+        }
+        .action-link:hover { text-decoration: underline; }
+        ---
+
+        <FollowUp>
+         Как только **вставите эту Порцию №1**, пишите команду **«го»**, и я пришлю Порцию №2 (HTML-разметку со всеми вкладками), где теги больше не будут путаться.
+        </FollowUp>

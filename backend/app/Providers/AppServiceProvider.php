@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Настройка прав доступа для суперадмина FoodNotifier
+        Gate::define('manage-saas', function (User $user) {
+            return $user->email === 'admin@foodnotifier.by';
+        });
     }
 }
+

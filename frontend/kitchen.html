@@ -23,6 +23,13 @@
     </style>
 </head>
 <body>
+<div id="audio-prompt" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 12, 0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; cursor: pointer;">
+    <div style="background: #1e1e24; padding: 40px 50px; border-radius: 20px; text-align: center; border: 2px solid #ff9f1c; box-shadow: 0 15px 35px rgba(0,0,0,0.6);">
+        <h2 style="color:#ff9f1c; margin:0 0 12px 0; font-size:26px;">👨‍🍳 Звуковые уведомления кухни</h2>
+        <p style="color:#a0a0a0; margin:0; font-size: 15px;">Активация голосового оповещения для поваров.</p>
+        <button style="margin-top: 20px; padding: 12px 30px; font-size: 16px; font-weight: bold; color: #000; background-color: #ff9f1c; border: none; border-radius: 8px; cursor: pointer;">Запустить экран кухни</button>
+    </div>
+</div>
 <header>
     <h1 id="kitchen-title">👨‍🍳 Монитор кухни | FoodNotifier</h1>
     <div class="status-badge"><span class="status-dot"></span> ОНЛАЙН API</div>
@@ -32,112 +39,154 @@
 <div id="no-orders" style="display: none;">На кухне тишина... Активных заказов нет.</div>
 
 <script>
-    const API_BASE_URL = 'http://localhost:8000/api';
+    const API_BASE_URL = '/api';
     const urlParams = new URLSearchParams(window.location.search);
     const restaurantId = urlParams.get('restaurant');
+
+    // Глобальные переменные для корректного отслеживания аудио-контекста
+    let previousPendingOrders = [];
+    let isVoiceAllowed = false;
 
     document.addEventListener("DOMContentLoaded", () => {
         const titleEl = document.getElementById('kitchen-title') || document.body;
 
         if (!restaurantId) {
             titleEl.innerHTML = `<span style="color:#ff5252;">⚠️ Ошибка: Ресторан не указан! Откройте экран через Панель Администратора.</span>`;
-            return; // Блокируем дальнейшее выполнение и интервалы
+            return;
         }
 
-        titleEl.innerText = `Кухня: ${restaurantId}`;
-        startKitchenPolling(); // Ваша старая функция автообновления заказов
+        titleEl.innerText = `Кухня: ${restaurantId.toUpperCase()}`;
+
+        // Запуск поллинга бэкенда
+        loadKitchenOrders();
+        setInterval(loadKitchenOrders, 3000);
     });
 
-    // Внутри вашей функции, которая делает fetch-запрос (например, loadKitchenOrders):
+    // Снятие шторки аудио
+    document.getElementById('audio-prompt').addEventListener('click', function() {
+        this.style.display = 'none';
+        isVoiceAllowed = true;
+        if ('speechSynthesis' in window) { window.speechSynthesis.speak(new SpeechSynthesisUtterance('')); }
+    });
+
+    // Голосовая нотификация нового заказа
+    function speakNewOrder(orderNumber) {
+        if (!isVoiceAllowed || !('speechSynthesis' in window)) return;
+        const utterance = new SpeechSynthesisUtterance(`Поступил новый заказ номер ${orderNumber}, нажмите кнопку В работу,когда начнете его готовить `);
+        utterance.lang = 'ru-RU';
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // Главная функция загрузки и обработки заказов
     function loadKitchenOrders() {
         if (!restaurantId) return;
 
-        // Передаем правильный динамический restaurant_id в GET-запрос бэкенда
-        fetch(`/api/kitchen/orders?restaurant_id=${restaurantId}`)
+        fetch(`${API_BASE_URL}/kitchen/orders?restaurant_id=${restaurantId}`)
             .then(response => {
                 if (!response.ok) throw new Error('Ошибка сервера');
                 return response.json();
             })
             .then(orders => {
-                renderKitchenOrders(orders); // Ваша старая функция отрисовки таблиц на кухне
+                renderKitchenOrders(orders);
             })
             .catch(err => {
                 console.error("Ошибка загрузки заказов кухни:", err);
             });
     }
 
+    // Функция отрисовки интерфейса повара
+    function renderKitchenOrders(orders) {
+        const container = document.getElementById('orders-container');
+        const noOrdersMsg = document.getElementById('no-orders');
+        if (!container || !noOrdersMsg) return;
 
-    function loadOrders() {
-        fetch(`${API_BASE_URL}/kitchen/orders?restaurant_id=${restaurantId}`)
-            .then(res => res.json())
-            .then(orders => {
-                const container = document.getElementById('orders-container');
-                const noOrdersMsg = document.getElementById('no-orders');
-                container.innerHTML = '';
+        container.innerHTML = '';
 
-                if (!orders || orders.length === 0) {
-                    noOrdersMsg.style.display = 'block';
-                    return;
-                }
-                noOrdersMsg.style.display = 'none';
+        if (!orders || orders.length === 0) {
+            noOrdersMsg.style.display = 'block';
+            previousPendingOrders = [];
+            return;
+        }
+        noOrdersMsg.style.display = 'none';
 
-                orders.forEach(order => {
-                    const card = document.createElement('div');
-                    card.className = 'order-card';
+        orders.forEach(order => {
+            const card = document.createElement('div');
+            card.className = 'order-card';
 
-                    if (order.status === 'cooking') {
-                        card.style.borderColor = 'var(--accent-color)';
-                        card.style.background = '#22222b';
-                    }
+            if (order.status === 'cooking') {
+                card.style.borderColor = 'var(--accent-color)';
+                card.style.background = '#22222b';
+            }
 
-                    let actionButton = '';
-                    if (order.status === 'pending') {
-                        actionButton = `<button class="ready-btn" style="background-color: var(--accent-color); color: #000;" onclick="startCooking(${order.id})">В РАБОТУ 👨‍🍳</button>`;
-                    } else {
-                        actionButton = `<button class="ready-btn" style="background-color: var(--success-color);" onclick="markAsReady(${order.id})">ГОТОВ 🛎️</button>`;
-                    }
+            let actionButton = '';
+            if (order.status === 'pending') {
+                actionButton = `<button class="ready-btn" style="background-color: var(--accent-color); color: #000;" onclick="startCooking(${order.id})">В РАБОТУ 👨‍🍳</button>`;
+            } else {
+                actionButton = `<button class="ready-btn" style="background-color: var(--success-color);" onclick="markAsReady(${order.id})">ГОТОВ 🛎️</button>`;
+            }
 
-                    card.innerHTML = `
-                        <div class="order-header">
-                            <div>
-                                <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">
-                                    ${order.status === 'pending' ? '⏳ В очереди' : '🔥 Готовится'}
-                                </span>
-                                <h2 class="order-num">#${order.order_number}</h2>
-                            </div>
-                            <span class="order-time">⏱️ ${order.created_at}</span>
-                        </div>
-                        ${actionButton}
-                    `;
-                    container.appendChild(card);
-                });
-            })
-            .catch(err => console.error("Ошибка загрузки заказов кухонь:", err));
+            card.innerHTML = `
+                <div class="order-header">
+                    <div>
+                        <span style="font-size: 14px; color: var(--text-muted); display:block; margin-bottom:4px;">Номер чека:</span>
+                        <h2 class="order-num">${order.order_number}</h2>
+                    </div>
+                    <span class="order-time">${order.created_at}</span>
+                </div>
+                ${actionButton}
+            `;
+            container.appendChild(card);
+        });
+
+        // Блок аудио-оповещения повара о новых входящих заказах 'pending'
+        let currentPendingOrders = orders
+            .filter(o => o.status === 'pending')
+            .map(o => o.order_number);
+
+        currentPendingOrders.forEach(num => {
+            if (!previousPendingOrders.includes(num)) {
+                speakNewOrder(num);
+            }
+        });
+        previousPendingOrders = currentPendingOrders;
     }
 
+    // Логика кнопки "В РАБОТУ" (Передача FormData под ожидания Laravel)
     function startCooking(orderId) {
-        let formData = new FormData();
+        const formData = new FormData();
         formData.append('order_id', orderId);
         formData.append('restaurant_id', restaurantId);
 
-        fetch(`${API_BASE_URL}/kitchen/orders/start`, { method: 'POST', body: formData })
+        fetch(`${API_BASE_URL}/kitchen/orders/start`, {
+            method: 'POST',
+            body: formData
+        })
             .then(res => res.json())
-            .then(data => { if (data.success) loadOrders(); });
+            .then(data => {
+                if (data.success) loadKitchenOrders();
+                else alert('Ошибка изменения статуса');
+            })
+            .catch(err => console.error(err));
     }
 
+    // Логика кнопки "ГОТОВ" (Передача FormData под ожидания Laravel)
     function markAsReady(orderId) {
-        let formData = new FormData();
+        const formData = new FormData();
         formData.append('order_id', orderId);
         formData.append('restaurant_id', restaurantId);
 
-        fetch(`${API_BASE_URL}/kitchen/orders/ready`, { method: 'POST', body: formData })
+        fetch(`${API_BASE_URL}/kitchen/orders/ready`, {
+            method: 'POST',
+            body: formData
+        })
             .then(res => res.json())
-            .then(data => { if (data.success) loadOrders(); });
+            .then(data => {
+                if (data.success) loadKitchenOrders();
+                else alert('Ошибка закрытия заказа');
+            })
+            .catch(err => console.error(err));
     }
-
-    setInterval(loadOrders, 3000);
-    loadOrders();
 </script>
 </body>
 </html>
-
