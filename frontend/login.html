@@ -100,11 +100,15 @@
                 const redirect = new URLSearchParams(location.search).get('redirect');
             if (redirect) {
                 window.location.href = redirect;
-            } else if (data.user?.role === 'staff') {
-                window.location.href = '/kitchen.html';
-            } else {
-                window.location.href = '/admin.html';
-            }
+                if (data.user?.position === 'cashier') {
+                    window.location.href = '/cashier.html';
+                } else if (data.user?.position === 'chef') {
+                    window.location.href = '/kitchen.html';
+                } else if (data.user?.role === 'owner' || data.user?.role === 'admin' || data.user?.is_superadmin) {
+                    window.location.href = '/admin.html';
+                } else {
+                    window.location.href = '/admin.html';
+                }
             } else {
                 alert('Ошибка: ' + (data.message || 'Неверные данные'));
             }

@@ -61,6 +61,8 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
                 'id'   => $user->restaurant->id,
                 'slug' => $user->restaurant->slug,
                 'name' => $user->restaurant->name,
+                'position' => $user->position,
+
             ] : null,
         ]);
     });
