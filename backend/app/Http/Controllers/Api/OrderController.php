@@ -30,19 +30,39 @@ class OrderController extends Controller
         return response()->json(['success' => true, 'order_id' => $order->id], 201);
     }
 
+
     public function checkStatus(Request $request)
     {
         $tenant = $this->tenantOrFail();
-        $orderId = (int) $request->get('order_id');
+        $orderNumber = (string) $request->get('order_number');
 
-        $status = Order::query()
-            ->where('id', $orderId)
+        $order = Order::query()
+            ->where('order_number', $orderNumber)
             ->where('restaurant_id', $tenant->id)
-            ->value('status');
+            ->first();
 
-        return response()->json(['status' => $status ?? 'not_found']);
+        if (! $order) {
+            return response()->json(['status' => 'not_found'], 404);
+        }
+
+        $waitMinutes = null;
+        if ($order->cooking_started_at) {
+            $waitMinutes = round(($order->cooking_started_at->timestamp - $order->created_at->timestamp) / 60);
+        }
+
+        $cookMinutes = null;
+        if ($order->ready_at && $order->cooking_started_at) {
+            $cookMinutes = round(($order->ready_at->timestamp - $order->cooking_started_at->timestamp) / 60);
+        }
+
+        return response()->json([
+            'order_number'  => $order->order_number,
+            'status'        => $order->status,
+            'created_at'    => $order->created_at->format('H:i'),
+            'wait_minutes'  => $waitMinutes,
+            'cook_minutes'  => $cookMinutes,
+        ]);
     }
-
     public function getCookingOrders(Request $request)
     {
         $tenant = $this->tenantOrFail();

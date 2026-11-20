@@ -97,7 +97,14 @@
             const data = await response.json();
             if (response.ok && data.token) {
                 localStorage.setItem('auth_token', data.token);
+                const redirect = new URLSearchParams(location.search).get('redirect');
+            if (redirect) {
+                window.location.href = redirect;
+            } else if (data.user?.role === 'staff') {
+                window.location.href = '/kitchen.html';
+            } else {
                 window.location.href = '/admin.html';
+            }
             } else {
                 alert('Ошибка: ' + (data.message || 'Неверные данные'));
             }

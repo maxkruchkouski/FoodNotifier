@@ -144,7 +144,37 @@
 
 <script>
     const API = '/api';
-    const restaurantSlug = new URLSearchParams(location.search).get('restaurant');
+    let restaurantSlug = new URLSearchParams(location.search).get('restaurant');
+
+    async function initKitchen() {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            window.location.href = '/login.html?redirect=/kitchen.html';
+            return;
+        }
+        try {
+            const res = await fetch('/api/admin/user', {
+                headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+            });
+            if (!res.ok) {
+                localStorage.removeItem('auth_token');
+                window.location.href = '/login.html?redirect=/kitchen.html';
+                return;
+            }
+            const user = await res.json();
+            if (!user.restaurant) {
+                console.warn('Пользователь не привязан к ресторану');
+                return;
+            }
+            restaurantSlug = user.restaurant.slug;
+            localStorage.setItem('current_restaurant', restaurantSlug);
+            const titleEl = document.querySelector('.kitchen-title, h1, .header-title');
+            if (titleEl) titleEl.textContent = 'Кухня: ' + user.restaurant.name;
+        } catch (e) {
+            console.error('initKitchen error:', e);
+        }
+    }
+    initKitchen();
     let previousPending = [];
     let voiceAllowed = false;
     let pollTimer = null;

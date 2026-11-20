@@ -171,8 +171,36 @@
         .error-banner { background: rgba(255, 82, 82, 0.15); border: 1px solid rgba(255, 82, 82, 0.3); color: #ff5252; padding: 14px 20px; border-radius: 10px; margin-bottom: 20px; display: none; }
         #qr-result { margin-top: 20px; text-align: center; }
         #qr-result svg { max-width: 220px; background: #fff; padding: 10px; border-radius: 12px; }
+    
+        /* === МОБИЛЬНЫЙ АДАПТИВ === */
+        @media (max-width: 768px) {
+            aside {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+                z-index: 1000;
+            }
+            body.sidebar-open aside { transform: translateX(0); }
+            body.sidebar-open::after {
+                content: '';
+                position: fixed; inset: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+            }
+            main { margin-left: 0 !important; padding: 16px; }
+            .kpi-container { grid-template-columns: 1fr; }
+            .charts-row { grid-template-columns: 1fr !important; }
+            table { font-size: 0.8rem; }
+            .tab-content { overflow-x: auto; }
+            .hamburger { display: block !important; }
+        }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">        // Закрытие сайдбара по клику на оверлей (мобилка)
+        document.addEventListener('click', (e) => {
+            if (e.target === document.body && document.body.classList.contains('sidebar-open')) {
+                document.body.classList.remove('sidebar-open');
+            }
+        });
+    </script>
 </head>
 <body>
 
@@ -403,7 +431,11 @@
 
     // --- БУРГЕР ---
     document.getElementById('burger-btn').addEventListener('click', () => {
-        document.body.classList.toggle('sidebar-collapsed');
+        if (window.innerWidth <= 768) {
+            document.body.classList.toggle('sidebar-open');
+        } else {
+            document.body.classList.toggle('sidebar-collapsed');
+        }
     });
 
     // --- ВКЛАДКИ ---

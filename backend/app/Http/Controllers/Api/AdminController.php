@@ -33,14 +33,17 @@ class AdminController extends Controller
         }
 
         // 3. Проверяем роль (Разрешаем доступ только admin и owner)
-        if (!in_array($user->role, ['superadmin', 'admin', 'owner'])) {
+        if (!in_array($user->role, ['superadmin', 'admin', 'owner', 'staff'])) {
             return response()->json(['success' => false, 'message' => 'Доступ запрещен'], 403);
         }
 
         // ИСКЛЮЧИЛИ ОПАСНЫЙ Auth::login($user), так как Sanctum авторизует напрямую через токены
 
         // 4. Генерируем рабочий Sanctum токен
-        $token = $user->createToken('admin-access')->plainTextToken;
+        $expiresAt = in_array($user->role, ['superadmin', 'admin', 'owner'])
+            ? now()->addDays(2)      // владелец/админ — 2 дня
+            : now()->endOfDay();      // staff — до конца дня
+        $token = $user->createToken('admin-access', ['*'], $expiresAt)->plainTextToken;
 
         return response()->json([
             'success' => true,

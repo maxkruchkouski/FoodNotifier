@@ -42,4 +42,11 @@ class User extends Authenticatable
     {
         return $this->hasMany(Restaurant::class, 'owner_id');
     }
+
+    public function restaurant()
+    {
+        return $this->belongsTo(\App\Models\Restaurant::class)
+            ->withoutGlobalScope('owner');
+    }
+
 }

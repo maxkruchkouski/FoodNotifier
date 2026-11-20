@@ -50,7 +50,20 @@ Route::middleware(['resolve.tenant'])->group(function () {
 
 Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::post('/logout', [AdminController::class, 'logout']);
-    Route::get('/user', fn (\Illuminate\Http\Request $request) => $request->user());
+    Route::get('/user', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+        return response()->json([
+            'id'            => $user->id,
+            'email'         => $user->email,
+            'role'          => $user->role,
+            'is_superadmin' => $user->is_superadmin,
+            'restaurant'    => $user->restaurant ? [
+                'id'   => $user->restaurant->id,
+                'slug' => $user->restaurant->slug,
+                'name' => $user->restaurant->name,
+            ] : null,
+        ]);
+    });
 
     // Глобальные (суперадмин)
     Route::get('/owners', [AdminController::class, 'getOwners']);

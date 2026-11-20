@@ -144,6 +144,16 @@
         .toast-ok { background: #2ecc71; color: #fff; }
         .toast-err { background: #ff5252; color: #fff; }
         .toast-info { background: rgba(255,159,28,0.95); color: #111; }
+    
+        input::selection { background: rgba(255,159,28,0.4); color: #fff; }
+        input { caret-color: #ff9f1c; }
+        input:focus { background: rgba(255,255,255,0.08); }
+    
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 1rem;
+            letter-spacing: 0;
+        }
     </style>
 </head>
 <body>
@@ -159,7 +169,7 @@
 
     <div id="form-screen" class="hidden">
         <h3>Введите номер заказа с чека:</h3>
-        <input type="number" id="order_number" placeholder="00" min="1" inputmode="numeric" autocomplete="off">
+        <input type="number" id="order_number" placeholder="Введите номер" min="1" inputmode="numeric" autocomplete="off">
         <button id="start-btn">Следить за готовностью</button>
     </div>
 
