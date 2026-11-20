@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
+            'ensure.admin' => \App\Http\Middleware\EnsureAdminAccess::class,
             'resolve.tenant' => \App\Http\Middleware\ResolveTenant::class,
             'check.billing' => \App\Http\Middleware\CheckRestaurantBilling::class,
             'ensure.tenant.access' => \App\Http\Middleware\EnsureTenantAccess::class,

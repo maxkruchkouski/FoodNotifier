@@ -98,9 +98,10 @@
             if (response.ok && data.token) {
                 localStorage.setItem('auth_token', data.token);
                 const redirect = new URLSearchParams(location.search).get('redirect');
-            if (redirect) {
-                window.location.href = redirect;
-                if (data.user?.position === 'cashier') {
+
+                if (redirect) {
+                    window.location.href = redirect;
+                } else if (data.user?.position === 'cashier') {
                     window.location.href = '/cashier.html';
                 } else if (data.user?.position === 'chef') {
                     window.location.href = '/kitchen.html';

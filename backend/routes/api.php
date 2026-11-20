@@ -56,31 +56,30 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
             'id'            => $user->id,
             'email'         => $user->email,
             'role'          => $user->role,
+            'position'      => $user->position,   // ← ВОТ ЗДЕСЬ (верхний уровень)
             'is_superadmin' => $user->is_superadmin,
             'restaurant'    => $user->restaurant ? [
                 'id'   => $user->restaurant->id,
                 'slug' => $user->restaurant->slug,
                 'name' => $user->restaurant->name,
-                'position' => $user->position,
-
             ] : null,
         ]);
     });
 
-    // Глобальные (суперадмин)
-    Route::get('/owners', [AdminController::class, 'getOwners']);
-    Route::post('/users', [AdminController::class, 'createUser']);
-    Route::get('/qr', [AdminController::class, 'generateQr']);
+    // ТОЛЬКО для owner/admin/superadmin
+    Route::middleware('ensure.admin')->group(function () {
+        Route::get('/owners', [AdminController::class, 'getOwners']);
+        Route::post('/users', [AdminController::class, 'createUser']);
+        Route::get('/qr', [AdminController::class, 'generateQr']);
 
-    // Рестораны (скоуп owner применится в модели)
-    Route::get('/restaurants', [AdminController::class, 'getRestaurants']);
-    Route::post('/restaurants', [AdminController::class, 'createRestaurant']);
-    Route::post('/restaurants/toggle', [AdminController::class, 'toggleTariff']);
-    Route::delete('/restaurants/{id}', [AdminController::class, 'deleteRestaurant']);
+        Route::get('/restaurants', [AdminController::class, 'getRestaurants']);
+        Route::post('/restaurants', [AdminController::class, 'createRestaurant']);
+        Route::post('/restaurants/toggle', [AdminController::class, 'toggleTariff']);
+        Route::delete('/restaurants/{id}', [AdminController::class, 'deleteRestaurant']);
 
-    // KPI для дашборда — с проверкой доступа к конкретному тенанту
-    Route::middleware(['resolve.tenant', 'ensure.tenant.access'])->group(function () {
-        Route::get('/analytics', [AnalyticsController::class, 'getKpiMetrics']);
-        Route::get('/analytics/orders-series', [AnalyticsController::class, 'getOrdersSeries']);
+        Route::middleware(['resolve.tenant', 'ensure.tenant.access'])->group(function () {
+            Route::get('/analytics', [AnalyticsController::class, 'getKpiMetrics']);
+            Route::get('/analytics/orders-series', [AnalyticsController::class, 'getOrdersSeries']);
+        });
     });
 });

@@ -49,9 +49,11 @@ class AdminController extends Controller
             'success' => true,
             'token' => $token,
             'user' => [
-                'id' => $user->id,
-                'email' => $user->email,
-                'role' => $user->role
+                'id'            => $user->id,
+                'email'         => $user->email,
+                'role'          => $user->role,
+                'position'      => $user->position,
+                'is_superadmin' => $user->is_superadmin,
             ]
         ]);
     }
