@@ -132,6 +132,18 @@
         }
         .ghost-btn:hover { border-color: var(--muted); box-shadow: none; }
         .error { color: #ff5252; padding: 20px; font-size: 14px; }
+    
+        .toast {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            padding: 14px 24px; border-radius: 10px; font-weight: 600;
+            opacity: 0; transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none; z-index: 1000;
+            max-width: 90%; text-align: center;
+        }
+        .toast.show { opacity: 1; }
+        .toast-ok { background: #2ecc71; color: #fff; }
+        .toast-err { background: #ff5252; color: #fff; }
+        .toast-info { background: rgba(255,159,28,0.95); color: #111; }
     </style>
 </head>
 <body>
@@ -165,7 +177,14 @@
 <script>
     const API = '/api';
     const restaurantSlug = new URLSearchParams(location.search).get('restaurant');
-    let currentOrderId = null, pollTimer = null;
+    let pollTimer = null;
+
+    function showToast(msg, type = 'info') {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show toast-' + type;
+        setTimeout(() => { t.className = 'toast'; }, 3000);
+    }
 
     // Универсальная обёртка — всегда передаёт X-Restaurant-Id
     function apiFetch(path, options = {}) {
@@ -217,7 +236,7 @@
         const savedId = localStorage.getItem(`order_id_${restaurantSlug}`);
         const savedNum = localStorage.getItem(`order_num_${restaurantSlug}`);
         if (savedId && savedNum) {
-            currentOrderId = savedId;
+            // currentOrderId больше не используется
             showStatus(savedNum);
             startPolling();
         }
@@ -252,24 +271,24 @@
 
     document.getElementById('start-btn').onclick = async () => {
         const num = document.getElementById('order_number').value.trim();
-        if (!num) return alert('Введите номер заказа');
+        if (!num) return showToast('Введите номер заказа', 'err');
 
         try {
-            const res = await apiFetch(`${API}/orders`, {
-                method: 'POST',
-                body: JSON.stringify({ order_number: num }),
-            });
-            if (res.success) {
-                currentOrderId = res.order_id;
-                localStorage.setItem(`order_id_${restaurantSlug}`, currentOrderId);
-                localStorage.setItem(`order_num_${restaurantSlug}`, num);
-                showStatus(num);
-                startPolling();
-            } else {
-                alert(res.message || res.error || 'Ошибка');
+            const res = await apiFetch(`${API}/orders/status?order_number=${encodeURIComponent(num)}`);
+            if (res.status === 'not_found') {
+                showToast('Заказ #' + num + ' не найден. Проверьте номер на чеке.', 'err');
+                return;
             }
+            currentOrderNumber = num;
+            localStorage.setItem(`order_num_${restaurantSlug}`, num);
+            showStatus(num);
+            startPolling();
         } catch (err) {
-            alert(err.message || 'Ошибка сети');
+            if (err.status === 404 || err.data?.status === 'not_found') {
+                showToast('Заказ #' + num + ' не найден. Проверьте номер на чеке.', 'err');
+            } else {
+                showToast(err.message || 'Ошибка сети', 'err');
+            }
         }
     };
 
@@ -280,20 +299,37 @@
     }
 
     async function checkStatus() {
-        if (!currentOrderId) return;
+        const num = localStorage.getItem(`order_num_${restaurantSlug}`);
+        if (!num) return;
         try {
-            const res = await apiFetch(`${API}/orders/status?order_id=${currentOrderId}`);
+            const res = await apiFetch(`${API}/orders/status?order_number=${encodeURIComponent(num)}`);
+            localStorage.removeItem(`not_found_since_${restaurantSlug}`);
             const statusText = document.getElementById('status-text');
             if (res.status === 'ready') {
                 clearInterval(pollTimer);
-                statusText.innerHTML = '🎉 Ваш заказ ГОТОВ!';
+                statusText.innerHTML = '🎉 Заказ #' + num + ' готов!<br><small>Заберите на стойке</small>';
                 statusText.className = 'status-ready';
             } else if (res.status === 'cooking') {
-                statusText.innerHTML = '👨‍🍳 Готовится...';
+                const cook = res.cook_minutes ? `~${res.cook_minutes} мин` : '...';
+                statusText.innerHTML = '👨‍🍳 Готовится ' + cook;
+            } else if (res.status === 'completed') {
+                clearInterval(pollTimer);
+                statusText.innerHTML = '✅ Заказ #' + num + ' выдан';
+                statusText.className = 'status-ready';
             } else if (res.status === 'not_found') {
-                statusText.innerHTML = '⚠️ Заказ не найден';
+                const startWait = localStorage.getItem(`not_found_since_${restaurantSlug}`);
+                if (!startWait) {
+                    localStorage.setItem(`not_found_since_${restaurantSlug}`, Date.now());
+                }
+                const elapsed = Math.floor((Date.now() - (startWait || Date.now())) / 1000);
+                if (elapsed > 120) {
+                    statusText.innerHTML = '⚠️ Заказ не найден.<br><small>Возможно, бариста ещё не ввёл заказ. Подойдите к кассе.</small>';
+                } else {
+                    statusText.innerHTML = '⏳ Заказ не найден.<br><small>Если вы только что оплатили — подождите 1–2 минуты.</small>';
+                }
             } else {
-                statusText.innerHTML = '⏳ Ожидает подтверждения...';
+                const wait = res.wait_minutes ? ` (ждёт ${res.wait_minutes} мин)` : '';
+                statusText.innerHTML = '⏳ Ожидает подтверждения' + wait;
             }
         } catch (err) {
             if (err.status === 403) {
@@ -307,12 +343,11 @@
 
     document.getElementById('reset-btn').onclick = () => {
         clearInterval(pollTimer);
-        localStorage.removeItem(`order_id_${restaurantSlug}`);
         localStorage.removeItem(`order_num_${restaurantSlug}`);
-        currentOrderId = null;
         document.getElementById('order_number').value = '';
         showScreen('form-screen');
     };
 </script>
+<div class="toast" id="toast"></div>
 </body>
 </html>
