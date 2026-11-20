@@ -66,5 +66,6 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     // KPI для дашборда — с проверкой доступа к конкретному тенанту
     Route::middleware(['resolve.tenant', 'ensure.tenant.access'])->group(function () {
         Route::get('/analytics', [AnalyticsController::class, 'getKpiMetrics']);
+        Route::get('/analytics/orders-series', [AnalyticsController::class, 'getOrdersSeries']);
     });
 });
