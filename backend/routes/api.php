@@ -23,6 +23,7 @@ Route::post('/admin/login', [AdminController::class, 'login']);
 
 Route::middleware(['resolve.tenant', 'check.billing'])->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
+    Route::post('/push/subscribe', [\App\Http\Controllers\Api\PushController::class, 'subscribe']);
     Route::get('/orders/status', [OrderController::class, 'checkStatus']);
 
     Route::get('/kitchen/orders', [OrderController::class, 'getCookingOrders']);

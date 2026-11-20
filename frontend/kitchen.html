@@ -168,8 +168,10 @@
             }
             restaurantSlug = user.restaurant.slug;
             localStorage.setItem('current_restaurant', restaurantSlug);
-            const titleEl = document.querySelector('.kitchen-title, h1, .header-title');
-            if (titleEl) titleEl.textContent = 'Кухня: ' + user.restaurant.name;
+            document.getElementById('kitchen-title').innerText = `Кухня: ${user.restaurant.name}`;
+            // Загружаем заказы ТОЛЬКО после получения slug
+            loadOrders();
+            if (window.startPolling) window.startPolling();
         } catch (e) {
             console.error('initKitchen error:', e);
         }
@@ -204,8 +206,9 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        // Проверка slug теперь внутри initKitchen()
         if (!restaurantSlug) {
-            document.getElementById('kitchen-title').innerHTML = '<span style="color:#ff5252;">⚠️ Ресторан не указан</span>';
+            // Если URL не содержит ?restaurant= — ждём initKitchen()
             return;
         }
         document.getElementById('kitchen-title').innerText = `Кухня: ${restaurantSlug}`;

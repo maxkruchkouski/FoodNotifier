@@ -155,6 +155,7 @@
             letter-spacing: 0;
         }
     </style>
+    <link rel="manifest" href="/manifest.json">
 </head>
 <body>
 
@@ -293,6 +294,7 @@
             localStorage.setItem(`order_num_${restaurantSlug}`, num);
             showStatus(num);
             startPolling();
+            subscribeToPush(num);
         } catch (err) {
             if (err.status === 404 || err.data?.status === 'not_found') {
                 showToast('Заказ #' + num + ' не найден. Проверьте номер на чеке.', 'err');
@@ -357,7 +359,91 @@
         document.getElementById('order_number').value = '';
         showScreen('form-screen');
     };
-</script>
+
+    // === Web Push ===
+    const VAPID_PUBLIC_KEY ="BN0rY3YQm69sOoh9Yr2F70BaPVSj_m2aVxM4Zz17gHStibNI324UwWB1axPDPBBV5dzpY1lZ1MkBNgIMZzxcqZ8";
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    // Детект iOS Safari (не PWA)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = window.navigator.standalone === true;
+    
+    async function subscribeToPush(orderNumber) {
+        // iOS-детект
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isStandalone = window.navigator.standalone === true;
+
+        if (isIOS && !isStandalone) {
+            // Не PWA — показываем инструкцию, не пытаемся подписаться
+            if (typeof showToast === 'function') {
+                showToast('Для уведомлений: Поделиться → На экран Домой', 'info');
+            }
+            return;
+        }
+
+        // Сначала — разрешение (внутри жеста пользователя)
+        if (!('Notification' in window)) {
+            console.warn('Notification API не поддерживается');
+            return;
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            console.warn('Уведомления не разрешены');
+            return;
+        }
+
+        // Только после разрешения — регистрируем SW и подписываемся
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            console.warn('Push API не поддерживается');
+            return;
+        }
+
+        const publicKey = await loadVapidKey();
+        if (!publicKey) {
+            console.error('VAPID public key не получен');
+            return;
+        }
+
+        try {
+            const reg = await navigator.serviceWorker.register('/sw.js');
+            await navigator.serviceWorker.ready;
+
+            const sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(publicKey),
+            });
+
+            await fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Restaurant-Id': restaurantSlug,
+                },
+                body: JSON.stringify({
+                    subscription: sub.toJSON(),
+                    order_number: orderNumber,
+                }),
+            });
+
+            console.log('✅ Подписка на push оформлена');
+        } catch (e) {
+            console.error('Ошибка подписки на push:', e);
+        }
+    }
+
+    </script>
 <div class="toast" id="toast"></div>
 </body>
 </html>

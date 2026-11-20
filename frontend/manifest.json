@@ -1,0 +1,9 @@
+{
+  "name": "FoodNotifier",
+  "short_name": "FoodNotifier",
+  "start_url": "/index.html?restaurant=coffee-house",
+  "display": "standalone",
+  "background_color": "#0f0f12",
+  "theme_color": "#ff9f1c",
+  "icons": []
+}
