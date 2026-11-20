@@ -63,13 +63,15 @@ cd ~/PhpstormProjects/FoodNotifier && cat > HANDOFF.md <<'EOF'
 - `docker-compose.yml` — удалить `version: '3.8'` (устаревшее поле, WARN в каждом выводе).
 - `frontend/package.json` — там React 19 + Vite, но фронтенд пока vanilla HTML. Решить: переписывать на React или оставить vanilla.
 - `README.md` — есть, но проверить, что все команды актуальны.
+- Этап 1.5 (следующий): `menu_items` + `order_items` + цены → появится выручка и средний чек на дашборде (сейчас `orders.total` nullable, но не заполняется).
+- `intl` PHP-расширение не установлено → `php artisan db:table` падает. Добавить в `Dockerfile`.
 
 ## Дорожная карта
 
 - [x] **Этап 1.** Мультитенантность
 - [ ] **Этап 2.** Биллинг (Stripe + YooKassa, `BillingGateway`)
 - [ ] **Этап 3.** Онбординг (self-service регистрация, wizard)
-- [ ] **Этап 4.** Дашборд владельца (графики Chart.js, история)
+- [x] **Этап 4.** Дашборд владельца (графики Chart.js: заказы/статусы/часы; переключатель 7/30; эндпоинт `/api/admin/analytics/orders-series`)
 - [ ] **Этап 5.** Real-time (Laravel Reverb, убрать поллинг)
 - [ ] **Этап 6.** Уведомления гостям (Telegram bot)
 
@@ -82,3 +84,13 @@ docker compose exec backend composer install
 docker compose exec backend cp .env.example .env
 docker compose exec backend php artisan key:generate
 docker compose exec backend php artisan migrate:fresh --seed
+
+
+### Дашборд (Этап 4, часть 1)
+- `GET /api/admin/analytics/orders-series?days=7|30` — `series`, `by_status`, `by_hour`, `avg_cooking_seconds`.
+- `AnalyticsController::getOrdersSeries()` — новый метод.
+- `frontend/admin.html` — Chart.js v4 (CDN), 3 графика, переключатель 7/30, обновление при смене ресторана.
+- `database/seeders/OrderTestSeeder.php` — тестовые заказы (79 шт. за 14 дней).
+- URL фронтенда: `http://localhost:8000/admin.html` (без `/frontend/` — nginx root = frontend/).
+
+
